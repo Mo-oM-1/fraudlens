@@ -488,3 +488,6 @@
 {"timestamp":"2026-01-21T17:53:02.125684Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/leie_download.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
 {"timestamp":"2026-01-21T17:53:32.745878Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/leie_download.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
 {"timestamp":"2026-01-21T17:54:03.378885Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/leie_download.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2026-01-21T17:54:33.996805Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/leie_download.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2026-01-21T17:55:04.586212Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/leie_download.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
+{"timestamp":"2026-01-21T17:55:35.271789Z","level":"info","event":"Filling up the DagBag from /opt/airflow/dags/leie_download.py","logger":"airflow.models.dagbag.DagBag","filename":"dagbag.py","lineno":593}
