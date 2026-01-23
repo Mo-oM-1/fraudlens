@@ -4,6 +4,7 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.http.sensors.http import HttpSensor
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 import pandas as pd
 import requests
 import logging
@@ -47,7 +48,6 @@ dag = DAG(
 # =============================================================================
 def download_leie_csv(**context):
     """Download LEIE CSV from OIG.HHS.GOV to /tmp"""
-    warnings.filterwarnings('ignore')
     
     url = "https://oig.hhs.gov/exclusions/downloadables/UPDATED.csv"
     local_path = "/tmp/UPDATED.csv"
@@ -84,7 +84,6 @@ download_task = PythonOperator(
 # =============================================================================
 def validate_leie_csv(**context):
     """Validate CSV: file exists, not empty, parseable"""
-    warnings.filterwarnings('ignore')
     
     local_path = context['task_instance'].xcom_pull(
         task_ids='download_leie_csv',
@@ -122,7 +121,6 @@ validate_task = PythonOperator(
 # =============================================================================
 def upload_leie_to_s3(**context):
     """Upload validated CSV to S3 with timestamp"""
-    warnings.filterwarnings('ignore')
     
     local_path = context['task_instance'].xcom_pull(
         task_ids='download_leie_csv',
@@ -170,7 +168,6 @@ upload_task = PythonOperator(
 # =============================================================================
 def summarize_run(**context):
     """Log summary metrics"""
-    warnings.filterwarnings('ignore')
     
     file_size_mb = context['task_instance'].xcom_pull(
         task_ids='download_leie_csv',
@@ -201,6 +198,16 @@ summary_task = PythonOperator(
 )
 
 # =============================================================================
+# TASK 5 : Trigger DAG d1 (d1_medicare_hospital_spending_download)
+# =============================================================================
+trigger_medicare_hospital_spending = TriggerDagRunOperator(
+    task_id='trigger_medicare_hospital_spending_dag',
+    trigger_dag_id='medicare_hospital_spending_download',
+    wait_for_completion=False,
+    dag=dag,
+)
+
+# =============================================================================
 # DAG DEPENDENCIES
 # =============================================================================
-download_task >> validate_task >> upload_task >> summary_task
+download_task >> validate_task >> upload_task >> summary_task >> trigger_medicare_hospital_spending
