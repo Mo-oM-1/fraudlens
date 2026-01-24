@@ -23,7 +23,7 @@ MAX_WORKERS = 5  # nombre de threads parallèles par année
 
 BUCKET = "ai-factory-bckt"
 PREFIX = "raw/open_payments"
-PROGRAM_YEARS = list(range(2023, 2024))
+PROGRAM_YEARS = list(range(2023, 2024, 2025))
 
 s3 = boto3.client("s3")
 
