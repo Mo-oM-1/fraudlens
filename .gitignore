@@ -2,3 +2,13 @@
 .aws
 terraform/
 .terraform/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Airflow logs
+logs/
+
+# Virtual env
+venv/
