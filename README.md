@@ -53,7 +53,7 @@ Ce projet ingère et centralise plusieurs datasets publics CMS/OIG pour détecte
 
 ---
 
-## 🔗 Liens entre datasets
+## Liens entre datasets
 - **LEIE ↔ Open Payments** : NPI ou nom du prestataire  
 - **Open Payments ↔ Provider Information / Long-Term Care / Hospice / Home Health Care** : NPI  
 - **Medicare Hospital Spending ↔ Provider Information / Long-Term Care** : NPI / Hospital ID  
@@ -61,12 +61,12 @@ Ce projet ingère et centralise plusieurs datasets publics CMS/OIG pour détecte
 
 ---
 
-## ⚡ Objectif
+## Objectif
 Centraliser ces données pour créer un **pipeline Airflow + Snowflake** afin de générer des alertes et features pour la **détection de fraude médicale**.  
 
 ---
 
-## 🛠️ Stack technique
+## Stack technique
 - Airflow pour l’orchestration des DAGs  
 - Snowflake pour le stockage et les transformations  
 - S3 pour le landing des fichiers bruts  
