@@ -2,11 +2,11 @@ import warnings
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 import requests
 import logging
 import boto3
 import os
+import pandas as pd
 
 # -------------------------------------------------------------------
 # CONFIGURATION
@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 CSV_URL = "https://data.cms.gov/provider-data/sites/default/files/resources/8e792480607df0e6a32bbc6ac99a2f31_1764691562/Long-Term_Care_Hospital-General_Information_Dec2025.csv"
 S3_BUCKET = "ai-factory-bckt"
-S3_PREFIX = "raw/long_term_care_hospital"
+S3_PREFIX_RAW = "raw/long_term_care_hospital"
+S3_PREFIX_BRONZE = "bronze/long_term_care_hospital"
 
 s3 = boto3.client("s3")
 
@@ -41,7 +42,7 @@ with DAG(
     catchup=False,
     doc_md="""
     # Long-Term Care Hospital CSV DAG
-    Télécharge le CSV Long-Term Care Hospital - General Information et le stocke sur S3.
+    Télécharge le CSV Long-Term Care Hospital - General Information et le stocke sur S3 (raw + bronze Parquet).
     """,
     tags=['provider', 'csv', 's3', 'long-term-care'],
 ) as dag:
@@ -72,42 +73,52 @@ with DAG(
     )
 
     # -------------------------------------------------------------------
-    # TASK 2 : Upload to S3
+    # TASK 2 : Upload CSV to raw + Convert to Parquet for bronze
     # -------------------------------------------------------------------
-    def upload_csv_to_s3(**context):
+    def upload_csv_and_parquet(**context):
         local_path = context['task_instance'].xcom_pull(task_ids='download_csv', key='local_path')
         file_size_mb = context['task_instance'].xcom_pull(task_ids='download_csv', key='file_size_mb')
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        s3_key_versioned = f"{S3_PREFIX}/LongTermCare_Hospital_{timestamp}.csv"
-        s3_key_latest = f"{S3_PREFIX}/LongTermCare_Hospital_LATEST.csv"
 
+        # --- Upload raw CSV ---
+        s3_key_versioned = f"{S3_PREFIX_RAW}/LongTermCare_Hospital_{timestamp}.csv"
+        s3_key_latest = f"{S3_PREFIX_RAW}/LongTermCare_Hospital_LATEST.csv"
         s3.upload_file(local_path, S3_BUCKET, s3_key_versioned)
-        logger.info(f"📤 Upload versionné sur s3://{S3_BUCKET}/{s3_key_versioned}")
-
         s3.upload_file(local_path, S3_BUCKET, s3_key_latest)
-        logger.info(f"📤 Mis à jour LATEST sur s3://{S3_BUCKET}/{s3_key_latest}")
+        logger.info(f"📤 CSV uploadé raw sur s3://{S3_BUCKET}/{s3_key_versioned} et LATEST")
+
+        # --- Convert to Parquet & Upload bronze ---
+        df = pd.read_csv(local_path)
+        parquet_local_path = "/tmp/LongTermCare_Hospital_Info.parquet"
+        df.to_parquet(parquet_local_path, index=False)
+        s3_key_parquet = f"{S3_PREFIX_BRONZE}/LongTermCare_Hospital_LATEST.parquet"
+        s3.upload_file(parquet_local_path, S3_BUCKET, s3_key_parquet)
+        logger.info(f"📤 Parquet uploadé bronze sur s3://{S3_BUCKET}/{s3_key_parquet}")
 
         context['task_instance'].xcom_push(key='s3_key_versioned', value=s3_key_versioned)
+        context['task_instance'].xcom_push(key='s3_key_parquet', value=s3_key_parquet)
         context['task_instance'].xcom_push(key='file_size_mb', value=file_size_mb)
 
     upload_task = PythonOperator(
-        task_id='upload_to_s3',
-        python_callable=upload_csv_to_s3,
+        task_id='upload_csv_and_parquet',
+        python_callable=upload_csv_and_parquet,
     )
 
     # -------------------------------------------------------------------
     # TASK 3 : Summary
     # -------------------------------------------------------------------
     def summarize_run(**context):
-        s3_key = context['task_instance'].xcom_pull(task_ids='upload_to_s3', key='s3_key_versioned')
-        file_size_mb = context['task_instance'].xcom_pull(task_ids='download_csv', key='file_size_mb')
+        s3_csv = context['task_instance'].xcom_pull(task_ids='upload_csv_and_parquet', key='s3_key_versioned')
+        s3_parquet = context['task_instance'].xcom_pull(task_ids='upload_csv_and_parquet', key='s3_key_parquet')
+        file_size_mb = context['task_instance'].xcom_pull(task_ids='upload_csv_and_parquet', key='file_size_mb')
 
         logger.info("="*70)
         logger.info("📊 LONG-TERM CARE HOSPITAL DAG - SUMMARY")
         logger.info("="*70)
         logger.info(f"✅ Taille fichier : {file_size_mb} MB")
-        logger.info(f"✅ S3 Path : s3://{S3_BUCKET}/{s3_key}")
+        logger.info(f"✅ S3 Path (raw CSV) : s3://{S3_BUCKET}/{s3_csv}")
+        logger.info(f"✅ S3 Path (bronze Parquet) : s3://{S3_BUCKET}/{s3_parquet}")
         logger.info(f"✅ Timestamp : {datetime.now().isoformat()}")
         logger.info("="*70)
 
@@ -116,16 +127,7 @@ with DAG(
         python_callable=summarize_run,
     )
 
-    # -------------------
-    # TASK 4 : Trigger DAG d5
-    # -------------------
-    trigger_hospice = TriggerDagRunOperator(
-        task_id='trigger_hospice',
-        trigger_dag_id='hospice_download', # DAG ID
-        wait_for_completion=False,
-    )
-
     # -------------------------------------------------------------------
     # DAG DEPENDENCIES
     # -------------------------------------------------------------------
-    download_task >> upload_task >> summary_task >> trigger_hospice
+    download_task >> upload_task >> summary_task

@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 import pandas as pd
 import requests
 import logging
@@ -25,13 +24,12 @@ default_args = {
 }
 
 # =============================================================================
-# DAG DEFINITION (avec with DAG)
+# DAG DEFINITION
 # =============================================================================
 with DAG(
     dag_id="leie_download",
     default_args=default_args,
     schedule=None,
-    start_date=default_args["start_date"],
     catchup=False,
     doc_md="""
     # LEIE (Exclusions) Download DAG
@@ -98,46 +96,72 @@ with DAG(
     )
 
     # -------------------------------------------------------------------------
-    # TASK 3 : Upload to S3
+    # TASK 3 : Upload CSV to raw S3
     # -------------------------------------------------------------------------
-    def upload_leie_to_s3(**context):
+    def upload_leie_csv_to_s3(**context):
         local_path = context['task_instance'].xcom_pull(task_ids='download_leie_csv', key='leie_local_path')
-        row_count = context['task_instance'].xcom_pull(task_ids='validate_leie_csv', key='leie_row_count')
 
         s3_bucket = 'ai-factory-bckt'
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        s3_key = f"raw/leie/UPDATED_{timestamp}.csv"
-        logger.info(f"📤 Uploading to S3: s3://{s3_bucket}/{s3_key}")
+        raw_key = 'raw/leie/UPDATED_LATEST.csv'
+        logger.info(f"📤 Uploading CSV to S3 raw: s3://{s3_bucket}/{raw_key}")
 
         try:
             s3_hook = S3Hook(aws_conn_id='aws_default')
-            s3_hook.load_file(filename=local_path, key='raw/leie/UPDATED_LATEST.csv', bucket_name=s3_bucket, replace=True)
-            logger.info("✅ Updated LATEST pointer")
-            context['task_instance'].xcom_push(key='s3_key', value=s3_key)
-            return s3_key
+            s3_hook.load_file(filename=local_path, key=raw_key, bucket_name=s3_bucket, replace=True)
+            context['task_instance'].xcom_push(key='s3_raw_key', value=raw_key)
+            return raw_key
         except Exception as e:
-            logger.error(f"❌ S3 upload failed: {str(e)}")
+            logger.error(f"❌ S3 raw upload failed: {str(e)}")
             raise
 
-    upload_task = PythonOperator(
-        task_id='upload_leie_s3',
-        python_callable=upload_leie_to_s3,
+    upload_csv_task = PythonOperator(
+        task_id='upload_csv_s3',
+        python_callable=upload_leie_csv_to_s3,
     )
 
     # -------------------------------------------------------------------------
-    # TASK 4 : Summary Report
+    # TASK 4 : Convert CSV to Parquet & Upload to bronze S3
+    # -------------------------------------------------------------------------
+    def convert_csv_to_parquet(**context):
+        local_path = context['task_instance'].xcom_pull(task_ids='download_leie_csv', key='leie_local_path')
+        df = pd.read_csv(local_path)
+
+        parquet_local_path = "/tmp/UPDATED.parquet"
+        df.to_parquet(parquet_local_path, index=False)
+
+        s3_bucket = 'ai-factory-bckt'
+        bronze_key = 'bronze/leie/UPDATED_LATEST.parquet'
+        logger.info(f"📤 Uploading Parquet to S3 bronze: s3://{s3_bucket}/{bronze_key}")
+
+        try:
+            s3_hook = S3Hook(aws_conn_id='aws_default')
+            s3_hook.load_file(filename=parquet_local_path, key=bronze_key, bucket_name=s3_bucket, replace=True)
+            context['task_instance'].xcom_push(key='s3_bronze_key', value=bronze_key)
+        except Exception as e:
+            logger.error(f"❌ S3 bronze upload failed: {str(e)}")
+            raise
+
+    parquet_task = PythonOperator(
+        task_id='convert_csv_to_parquet',
+        python_callable=convert_csv_to_parquet,
+    )
+
+    # -------------------------------------------------------------------------
+    # TASK 5 : Summary Report
     # -------------------------------------------------------------------------
     def summarize_run(**context):
         file_size_mb = context['task_instance'].xcom_pull(task_ids='download_leie_csv', key='leie_file_size_mb')
         row_count = context['task_instance'].xcom_pull(task_ids='validate_leie_csv', key='leie_row_count')
-        s3_key = context['task_instance'].xcom_pull(task_ids='upload_leie_s3', key='s3_key')
+        s3_csv_key = context['task_instance'].xcom_pull(task_ids='upload_csv_s3', key='s3_raw_key')
+        s3_parquet_key = context['task_instance'].xcom_pull(task_ids='convert_csv_to_parquet', key='s3_bronze_key')
 
         logger.info("="*70)
         logger.info("📊 LEIE DOWNLOAD DAG - SUMMARY")
         logger.info("="*70)
         logger.info(f"✅ File Size: {file_size_mb} MB")
         logger.info(f"✅ Row Count: {row_count:,}")
-        logger.info(f"✅ S3 Path: s3://ai-factory-bckt/{s3_key}")
+        logger.info(f"✅ S3 CSV Path (raw): s3://ai-factory-bckt/{s3_csv_key}")
+        logger.info(f"✅ S3 Parquet Path (bronze): s3://ai-factory-bckt/{s3_parquet_key}")
         logger.info(f"✅ Timestamp: {datetime.now().isoformat()}")
         logger.info("="*70)
 
@@ -147,15 +171,6 @@ with DAG(
     )
 
     # -------------------------------------------------------------------------
-    # TASK 5 : Trigger DAG d1 (d1_medicare_hospital_spending_download)
-    # -------------------------------------------------------------------------
-    trigger_medicare_hospital_spending = TriggerDagRunOperator(
-        task_id='trigger_medicare_hospital_spending',
-        trigger_dag_id='medicare_hospital_spending_download',
-        wait_for_completion=False,
-    )
-
-    # -------------------------------------------------------------------------
     # DAG DEPENDENCIES
     # -------------------------------------------------------------------------
-    download_task >> validate_task >> upload_task >> summary_task >> trigger_medicare_hospital_spending
+    download_task >> validate_task >> upload_csv_task >> parquet_task >> summary_task

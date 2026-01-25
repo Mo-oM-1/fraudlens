@@ -1,6 +1,5 @@
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime, timedelta
 import logging
 import requests
@@ -12,7 +11,8 @@ s3 = boto3.client("s3")
 
 CSV_URL = "https://data.cms.gov/provider-data/sites/default/files/resources/1f8cde9e222d5d49f88a894bcf7a8981_1736791547/Medicare_Hospital_Spending_by_Claim.csv"
 S3_BUCKET = "ai-factory-bckt"
-S3_PREFIX = "raw/medicare_hospital_spending"
+S3_PREFIX_RAW = "raw/medicare_hospital_spending"
+S3_PREFIX_BRONZE = "bronze/medicare_hospital_spending"
 
 default_args = {
     'owner': 'MooM',
@@ -27,7 +27,7 @@ with DAG(
     default_args=default_args,
     schedule=None,
     catchup=False,
-    doc_md="Télécharge le CSV Medicare Hospital Spending et le stocke sur S3.",
+    doc_md="Télécharge le CSV Medicare Hospital Spending et le stocke sur S3 (raw + bronze).",
     tags=['medicare', 'csv', 's3'],
 ) as dag:
 
@@ -66,36 +66,53 @@ with DAG(
     )
 
     # -------------------
-    # TASK 3 : Upload to S3
+    # TASK 3 : Upload CSV to raw S3
     # -------------------
     def upload_csv_to_s3(**kwargs):
         local_path = kwargs['ti'].xcom_pull(task_ids='download_csv', key='local_path')
-        row_count = kwargs['ti'].xcom_pull(task_ids='validate_csv', key='row_count')
-        file_size_mb = kwargs['ti'].xcom_pull(task_ids='download_csv', key='file_size_mb')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        s3_key_versioned = f"{S3_PREFIX}/Medicare_Hospital_Spending_{timestamp}.csv"
-        s3_key_latest = f"{S3_PREFIX}/Medicare_Hospital_Spending_LATEST.csv"
+        s3_key_versioned = f"{S3_PREFIX_RAW}/Medicare_Hospital_Spending_{timestamp}.csv"
+        s3_key_latest = f"{S3_PREFIX_RAW}/Medicare_Hospital_Spending_LATEST.csv"
         s3.upload_file(local_path, S3_BUCKET, s3_key_versioned)
         s3.upload_file(local_path, S3_BUCKET, s3_key_latest)
         kwargs['ti'].xcom_push(key='s3_key_versioned', value=s3_key_versioned)
 
-    upload_task = PythonOperator(
+    upload_csv_task = PythonOperator(
         task_id='upload_to_s3',
         python_callable=upload_csv_to_s3,
     )
 
     # -------------------
-    # TASK 4 : Summary
+    # TASK 4 : Convert CSV to Parquet & Upload to bronze S3
+    # -------------------
+    def convert_csv_to_parquet(**kwargs):
+        local_path = kwargs['ti'].xcom_pull(task_ids='download_csv', key='local_path')
+        df = pd.read_csv(local_path)
+        parquet_local_path = "/tmp/Medicare_Hospital_Spending_by_Claim.parquet"
+        df.to_parquet(parquet_local_path, index=False)
+        s3_key_parquet = f"{S3_PREFIX_BRONZE}/Medicare_Hospital_Spending_LATEST.parquet"
+        s3.upload_file(parquet_local_path, S3_BUCKET, s3_key_parquet)
+        kwargs['ti'].xcom_push(key='s3_parquet_key', value=s3_key_parquet)
+
+    parquet_task = PythonOperator(
+        task_id='convert_csv_to_parquet',
+        python_callable=convert_csv_to_parquet,
+    )
+
+    # -------------------
+    # TASK 5 : Summary
     # -------------------
     def summarize_run(**kwargs):
-        s3_key = kwargs['ti'].xcom_pull(task_ids='upload_to_s3', key='s3_key_versioned')
+        s3_csv_key = kwargs['ti'].xcom_pull(task_ids='upload_to_s3', key='s3_key_versioned')
+        s3_parquet_key = kwargs['ti'].xcom_pull(task_ids='convert_csv_to_parquet', key='s3_parquet_key')
         row_count = kwargs['ti'].xcom_pull(task_ids='validate_csv', key='row_count')
         file_size_mb = kwargs['ti'].xcom_pull(task_ids='download_csv', key='file_size_mb')
         logger.info("="*70)
         logger.info("📊 MEDICARE CSV DAG - SUMMARY")
         logger.info(f"✅ Taille fichier : {file_size_mb} MB")
         logger.info(f"✅ Nombre de lignes : {row_count:,}")
-        logger.info(f"✅ S3 Path : s3://{S3_BUCKET}/{s3_key}")
+        logger.info(f"✅ S3 CSV Path (raw) : s3://{S3_BUCKET}/{s3_csv_key}")
+        logger.info(f"✅ S3 Parquet Path (bronze) : s3://{S3_BUCKET}/{s3_parquet_key}")
         logger.info(f"✅ Timestamp : {datetime.now().isoformat()}")
         logger.info("="*70)
 
@@ -105,15 +122,6 @@ with DAG(
     )
 
     # -------------------
-    # TASK 5 : Trigger DAG d3
-    # -------------------
-    trigger_provider_informations = TriggerDagRunOperator(
-        task_id='trigger_provider_informations',
-        trigger_dag_id='provider_informations_download', # DAG ID
-        wait_for_completion=False,
-    )
-
-    # -------------------
     # DAG DEPENDENCIES
     # -------------------
-    download_task >> validate_task >> upload_task >> summary_task >> trigger_provider_informations
+    download_task >> validate_task >> upload_csv_task >> parquet_task >> summary_task
