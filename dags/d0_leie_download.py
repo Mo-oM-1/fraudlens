@@ -2,15 +2,16 @@ import warnings
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 import pandas as pd
 import requests
 import logging
+import boto3
 
-# Suppress all warnings
+# Supprime les warnings
 warnings.filterwarnings('ignore')
 
 logger = logging.getLogger(__name__)
+s3 = boto3.client("s3")
 
 # =============================================================================
 # DAG DEFAULTS
@@ -55,14 +56,14 @@ with DAG(
             with open(local_path, 'wb') as f:
                 f.write(response.content)
             file_size_mb = round(len(response.content) / (1024 * 1024), 2)
-            logger.info(f"✅ Downloaded: {file_size_mb} MB")
+            logger.info(f"Downloaded: {file_size_mb} MB")
 
             context['task_instance'].xcom_push(key='leie_local_path', value=local_path)
             context['task_instance'].xcom_push(key='leie_file_size_mb', value=file_size_mb)
             return local_path
 
         except Exception as e:
-            logger.error(f"❌ Download failed: {str(e)}")
+            logger.error(f"Download failed: {str(e)}")
             raise
 
     download_task = PythonOperator(
@@ -81,13 +82,13 @@ with DAG(
             df = pd.read_csv(local_path)
             row_count = df.shape[0]
             if row_count == 0:
-                raise ValueError("❌ CSV file is empty!")
+                raise ValueError("CSV file is empty!")
 
-            logger.info(f"✅ Validation passed: {row_count:,} rows, {df.shape[1]} columns")
+            logger.info(f"Validation passed: {row_count:,} rows, {df.shape[1]} columns")
             context['task_instance'].xcom_push(key='leie_row_count', value=row_count)
             return True
         except Exception as e:
-            logger.error(f"❌ Validation failed: {str(e)}")
+            logger.error(f"Validation failed: {str(e)}")
             raise
 
     validate_task = PythonOperator(
@@ -102,16 +103,18 @@ with DAG(
         local_path = context['task_instance'].xcom_pull(task_ids='download_leie_csv', key='leie_local_path')
 
         s3_bucket = 'ai-factory-bckt'
-        raw_key = 'raw/leie/UPDATED_LATEST.csv'
-        logger.info(f"📤 Uploading CSV to S3 raw: s3://{s3_bucket}/{raw_key}")
+        raw_key_versioned = 'raw/leie/UPDATED_' + datetime.now().strftime('%Y%m%d_%H%M%S') + '.csv'
+        raw_key_latest = 'raw/leie/UPDATED_LATEST.csv'
+
+        logger.info(f"Uploading CSV to S3 raw: s3://{s3_bucket}/{raw_key_latest}")
 
         try:
-            s3_hook = S3Hook(aws_conn_id='aws_default')
-            s3_hook.load_file(filename=local_path, key=raw_key, bucket_name=s3_bucket, replace=True)
-            context['task_instance'].xcom_push(key='s3_raw_key', value=raw_key)
-            return raw_key
+            s3.upload_file(local_path, s3_bucket, raw_key_versioned)
+            s3.upload_file(local_path, s3_bucket, raw_key_latest)
+            context['task_instance'].xcom_push(key='s3_raw_key', value=raw_key_latest)
+            return raw_key_latest
         except Exception as e:
-            logger.error(f"❌ S3 raw upload failed: {str(e)}")
+            logger.error(f"S3 raw upload failed: {str(e)}")
             raise
 
     upload_csv_task = PythonOperator(
@@ -131,14 +134,14 @@ with DAG(
 
         s3_bucket = 'ai-factory-bckt'
         bronze_key = 'bronze/leie/UPDATED_LATEST.parquet'
-        logger.info(f"📤 Uploading Parquet to S3 bronze: s3://{s3_bucket}/{bronze_key}")
+
+        logger.info(f"Uploading Parquet to S3 bronze: s3://{s3_bucket}/{bronze_key}")
 
         try:
-            s3_hook = S3Hook(aws_conn_id='aws_default')
-            s3_hook.load_file(filename=parquet_local_path, key=bronze_key, bucket_name=s3_bucket, replace=True)
+            s3.upload_file(parquet_local_path, s3_bucket, bronze_key)
             context['task_instance'].xcom_push(key='s3_bronze_key', value=bronze_key)
         except Exception as e:
-            logger.error(f"❌ S3 bronze upload failed: {str(e)}")
+            logger.error(f"S3 bronze upload failed: {str(e)}")
             raise
 
     parquet_task = PythonOperator(
@@ -156,12 +159,12 @@ with DAG(
         s3_parquet_key = context['task_instance'].xcom_pull(task_ids='convert_csv_to_parquet', key='s3_bronze_key')
 
         logger.info("="*70)
-        logger.info("📊 LEIE DOWNLOAD DAG - SUMMARY")
+        logger.info("LEIE DOWNLOAD DAG - SUMMARY")
         logger.info("="*70)
         logger.info(f"✅ File Size: {file_size_mb} MB")
         logger.info(f"✅ Row Count: {row_count:,}")
-        logger.info(f"✅ S3 CSV Path (raw): s3://ai-factory-bckt/{s3_csv_key}")
-        logger.info(f"✅ S3 Parquet Path (bronze): s3://ai-factory-bckt/{s3_parquet_key}")
+        logger.info(f"✅ S3 CSV Path (raw): s3://{s3_bucket}/{s3_csv_key}")
+        logger.info(f"✅ S3 Parquet Path (bronze): s3://{s3_bucket}/{s3_parquet_key}")
         logger.info(f"✅ Timestamp: {datetime.now().isoformat()}")
         logger.info("="*70)
 

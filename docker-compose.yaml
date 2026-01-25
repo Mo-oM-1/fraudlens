@@ -5,6 +5,7 @@ x-airflow-common:
     - ${ENV_FILE_PATH:-.env}
   environment:
     &airflow-common-env
+    AIRFLOW_CONN_SNOWFLAKE_DEFAULT: snowflake://FISHER@rdsnbdu-gbc86569.snowflakecomputing.com/AI_FACTORY_DB?role=SYSADMIN&warehouse=AI_FACTORY_WH&authenticator=snowflake&private_key_path=/opt/airflow/snowflake/keys/rsa_key.p8
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
@@ -22,6 +23,8 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
     - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    - ${AIRFLOW_PROJ_DIR:-.}/snowflake:/opt/airflow/snowflake
+    - ${AIRFLOW_PROJ_DIR:-.}/snowflake/keys:/opt/airflow/snowflake/keys:ro
     - ~/.aws:/home/airflow/.aws:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:

@@ -12,3 +12,6 @@ logs/
 
 # Virtual env
 venv/
+
+# Snowflake private key
+snowflake/keys/*.p8
