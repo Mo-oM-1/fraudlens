@@ -1,6 +1,3 @@
--- --------------------------------------------------
--- Création du stage externe S3_STAGE
--- --------------------------------------------------
 USE DATABASE AI_FACTORY_DB;
 USE SCHEMA RAW_DATA;
 
