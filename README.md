@@ -18,13 +18,9 @@ Ce projet ingère et centralise plusieurs datasets publics CMS/OIG pour détecte
 
 ---
 
-## 3. Open Payments (Batch 2024)
-- **URL :** https://download.cms.gov/openpayments/PGYR2024_P06302025_06162025.zip
+## 3. Open Payments (Snowflake)(Batch 2024)
+- **URL :** 
 - **Contenu :** Paiements aux médecins et prestataires pour le program year 2024.
-- **Fichiers inclus :**
-  - `OP_DTL_GNRL_PGYR2024_P06302025_06162025.csv` → General Payments  
-  - `OP_DTL_RSRCH_PGYR2024_P06302025_06162025.csv` → Research Payments  
-  - `OP_DTL_OWNRSHP_PGYR2024_P06302025_06162025.csv` → Ownership & Investment Interests
 - **Usage :** Analyse des paiements, conflits d’intérêts, patterns de valeur.
 
 ---
