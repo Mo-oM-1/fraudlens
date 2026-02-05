@@ -153,6 +153,7 @@ with DAG(
     # TASK 5 : Summary Report
     # -------------------------------------------------------------------------
     def summarize_run(**context):
+        s3_bucket = 'ai-factory-bckt'
         file_size_mb = context['task_instance'].xcom_pull(task_ids='download_leie_csv', key='leie_file_size_mb')
         row_count = context['task_instance'].xcom_pull(task_ids='validate_leie_csv', key='leie_row_count')
         s3_csv_key = context['task_instance'].xcom_pull(task_ids='upload_csv_s3', key='s3_raw_key')

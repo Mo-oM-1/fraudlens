@@ -28,9 +28,9 @@ s3 = boto3.client("s3")
 default_args = {
     'owner': 'MooM',
     'start_date': datetime(2026, 1, 1),
-    'retries': 2,
+    'retries': 1,
     'retry_delay': timedelta(minutes=5),
-    'execution_timeout': timedelta(hours=1),
+    'execution_timeout': timedelta(hours=2),  # Fichiers volumineux
 }
 
 # -------------------------------------------------------------------
@@ -73,42 +73,75 @@ with DAG(
     )
 
     # -------------------------------------------------------------------
-    # TASK 2 : Extract CSVs, Upload to raw + Parquet to bronze
+    # TASK 2 : Extract CSVs, Upload to raw + Parquet to bronze (chunked)
     # -------------------------------------------------------------------
     def extract_upload_and_parquet(**context):
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
         local_zip_path = context['task_instance'].xcom_pull(task_ids='download_zip', key='local_zip_path')
         extract_dir = "/tmp/openpayments_csvs"
         os.makedirs(extract_dir, exist_ok=True)
 
-        # Décompression
+        # Decompression
         with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
             zip_ref.extractall(extract_dir)
-        logger.info(f"✅ ZIP décompressé dans {extract_dir}")
+        logger.info(f"ZIP decompresse dans {extract_dir}")
 
         csv_files = [f for f in os.listdir(extract_dir) if f.lower().endswith('.csv')]
-        logger.info(f"📄 {len(csv_files)} CSV trouvés : {csv_files}")
+        logger.info(f"{len(csv_files)} CSV trouves : {csv_files}")
 
         uploaded_raw = []
         uploaded_bronze = []
 
         for csv_file in csv_files:
             local_csv_path = os.path.join(extract_dir, csv_file)
+            file_base = csv_file.replace('.csv', '')
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
+            logger.info(f"Traitement de {csv_file}...")
+
             # --- Upload raw CSV ---
-            s3_key_versioned = f"{S3_PREFIX_RAW}/{csv_file.rstrip('.csv')}_{timestamp}.csv"
-            s3_key_latest = f"{S3_PREFIX_RAW}/{csv_file.rstrip('.csv')}_LATEST.csv"
+            s3_key_versioned = f"{S3_PREFIX_RAW}/{file_base}_{timestamp}.csv"
+            s3_key_latest = f"{S3_PREFIX_RAW}/{file_base}_LATEST.csv"
             s3.upload_file(local_csv_path, S3_BUCKET, s3_key_versioned)
             s3.upload_file(local_csv_path, S3_BUCKET, s3_key_latest)
             uploaded_raw.append(s3_key_versioned)
+            logger.info(f"CSV uploade vers S3 raw: {s3_key_latest}")
 
-            # --- Convert to Parquet & Upload bronze ---
-            df = pd.read_csv(local_csv_path)
-            parquet_local_path = f"/tmp/{csv_file.rstrip('.csv')}.parquet"
-            df.to_parquet(parquet_local_path, index=False)
-            s3_key_parquet = f"{S3_PREFIX_BRONZE}/{csv_file.rstrip('.csv')}_LATEST.parquet"
-            s3.upload_file(parquet_local_path, S3_BUCKET, s3_key_parquet)
-            uploaded_bronze.append(s3_key_parquet)
+            # --- Convert to Parquet (chunked) & Upload bronze ---
+            parquet_local_path = f"/tmp/{file_base}.parquet"
+            chunk_size = 100000
+            pq_writer = None
+
+            try:
+                for i, chunk in enumerate(pd.read_csv(local_csv_path, chunksize=chunk_size, low_memory=False)):
+                    table = pa.Table.from_pandas(chunk)
+                    if pq_writer is None:
+                        pq_writer = pq.ParquetWriter(parquet_local_path, table.schema)
+                    pq_writer.write_table(table)
+                    if i % 10 == 0:
+                        logger.info(f"  {csv_file}: chunk {i} traite ({(i+1)*chunk_size:,} lignes)")
+
+                if pq_writer:
+                    pq_writer.close()
+
+                s3_key_parquet = f"{S3_PREFIX_BRONZE}/{file_base}_LATEST.parquet"
+                s3.upload_file(parquet_local_path, S3_BUCKET, s3_key_parquet)
+                uploaded_bronze.append(s3_key_parquet)
+                logger.info(f"Parquet uploade vers S3 bronze: {s3_key_parquet}")
+
+            except Exception as e:
+                logger.error(f"Erreur conversion {csv_file}: {str(e)}")
+                if pq_writer:
+                    pq_writer.close()
+                raise
+
+            # Nettoyer les fichiers temporaires pour liberer l'espace
+            if os.path.exists(local_csv_path):
+                os.remove(local_csv_path)
+            if os.path.exists(parquet_local_path):
+                os.remove(parquet_local_path)
 
         context['task_instance'].xcom_push(key='uploaded_raw', value=uploaded_raw)
         context['task_instance'].xcom_push(key='uploaded_bronze', value=uploaded_bronze)

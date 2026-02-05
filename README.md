@@ -1,99 +1,204 @@
 # Medical Fraud Detection Data Pipeline
 
-Ce projet ingère et centralise plusieurs datasets publics CMS/OIG pour détecter des anomalies et fraudes dans les paiements médicaux.
+Pipeline de donnees pour la detection de fraudes medicales. Ingere et centralise plusieurs datasets publics CMS/OIG pour detecter des anomalies dans les paiements Medicare/Medicaid.
 
 ---
 
-## 1. LEIE (Excluded Individuals / Entities) (-2026)
+## Architecture
+
+```
+master_dag (Orchestrateur)
+    |
+    +-- init_snowflake_environment (Bootstrap)
+    |       +-- create_warehouse (AI_FACTORY_WH)
+    |       +-- create_schemas (RAW_DATA, BRONZE, SILVER, GOLD)
+    |       +-- create_s3_stage
+    |
+    +-- [En parallele]
+            +-- leie_download
+            +-- medicare_hospital_spending_download
+            +-- open_payments_download
+            +-- provider_information_download
+            +-- longterm_care_hospital_download
+            +-- hospice_download
+            +-- home_health_care_download
+            +-- medicare_part_d_prescribers_download
+```
+
+---
+
+## Sources de Donnees
+
+### 1. LEIE (Excluded Individuals / Entities)
 - **URL :** https://oig.hhs.gov/exclusions/downloadables/UPDATED.csv
-- **Contenu :** Liste des individus et entités exclues du programme Medicare/Medicaid (nom, type, raison de l’exclusion, dates).
-- **Usage :** Détecter paiements vers des prestataires exclus.
+- **Contenu :** Liste des individus et entites exclus du programme Medicare/Medicaid (nom, type, raison de l'exclusion, dates).
+- **Usage Fraude :** Detecter paiements vers des prestataires deja exclus pour fraude.
+- **Cle :** NPI, Nom
+
+### 2. Medicare Hospital Spending by Claim
+- **URL :** https://data.cms.gov/provider-data/sites/default/files/resources/.../Medicare_Hospital_Spending_by_Claim.csv
+- **Contenu :** Paiements Medicare par hopital et type de prestation (montant, nombre de patients).
+- **Usage Fraude :** Identifier depenses anormales ou patterns suspects par etablissement.
+- **Cle :** Facility ID
+
+### 3. Open Payments (Batch 2024)
+- **URL :** https://download.cms.gov/openpayments/PGYR2024_P06302025_06162025.zip
+- **Contenu :** Paiements des laboratoires pharmaceutiques aux medecins (cadeaux, consulting, recherche).
+- **Usage Fraude :** Detecter conflits d'interets, kickbacks, patterns de corruption.
+- **Cle :** NPI
+
+### 4. Provider Information (Nursing Home)
+- **URL :** https://data.cms.gov/provider-data/.../NH_ProviderInfo_Dec2025.csv
+- **Contenu :** Informations detaillees sur les prestataires (NPI, nom, adresse, type, specialite).
+- **Usage Fraude :** Enrichissement et validation des etablissements.
+- **Cle :** NPI, Provider ID
+
+### 5. Long-Term Care Hospital
+- **URL :** https://data.cms.gov/provider-data/.../Long-Term_Care_Hospital-General_Information_Dec2025.csv
+- **Contenu :** Details des hopitaux de soins prolonges (NPI, adresse, type de soins).
+- **Usage Fraude :** Secteur a risque - enrichir la localisation pour l'analyse.
+- **Cle :** Provider ID
+
+### 6. Hospice
+- **URL :** https://data.cms.gov/provider-data/.../Hospice_General-Information_Nov2025.csv
+- **Contenu :** Informations sur les etablissements de soins palliatifs.
+- **Usage Fraude :** Secteur a haut risque de fraude Medicare.
+- **Cle :** Provider ID
+
+### 7. Home Health Care
+- **URL :** https://data.cms.gov/provider-data/.../HH_Zip_Jan2026.csv
+- **Contenu :** Prestataires de soins a domicile avec ZIP Codes.
+- **Usage Fraude :** Analyses geospatiales et detection de clusters anormaux.
+- **Cle :** ZIP Code
+
+### 8. Medicare Part D Prescribers (NEW)
+- **URL :** https://data.cms.gov/sites/default/files/.../MUP_DPR_RY24_P04_V10_DY22_NPI.csv
+- **Contenu :** Prescriptions par medecin (NPI, specialite, nb prescriptions, couts, beneficiaires).
+- **Usage Fraude :** Detecter les sur-prescripteurs, pill mills, anomalies de prescription.
+- **Cle :** NPI
+
+### 9. NPPES Provider Data (Snowflake Marketplace)
+- **Source :** `AFFINE_NPPES_PROVIDER_DATA` (Snowflake Marketplace)
+- **Contenu :** Referentiel complet de tous les NPI aux Etats-Unis.
+- **Usage Fraude :** Table de reference maitre pour les jointures.
+- **Cle :** NPI (cle primaire)
 
 ---
 
-## 2. Medicare Hospital Spending by Claim (2023)
-- **URL :** https://data.cms.gov/provider-data/sites/default/files/resources/1f8cde9e222d5d49f88a894bcf7a8981_1736791547/Medicare_Hospital_Spending_by_Claim.csv
-- **Contenu :** Paiements Medicare par hôpital et type de prestation (montant, nombre de patients).
-- **Usage :** Identifier dépenses anormales ou patterns suspects.
+## Connexions Snowflake
+
+| Connexion | Warehouse | Usage |
+|-----------|-----------|-------|
+| `snowflake_bootstrap` | COMPUTE_WH | Creation infra (warehouse, DB, schemas) |
+| `snowflake_default` | AI_FACTORY_WH | Operations metier (DAGs de donnees) |
 
 ---
 
-## 3. Open Payments (Snowflake)(Batch 2024)
-- **URL :** 
-- **Contenu :** Paiements aux médecins et prestataires pour le program year 2024.
-- **Usage :** Analyse des paiements, conflits d’intérêts, patterns de valeur.
+## Schema de Jointure
+
+```
+                    NPPES (Snowflake Marketplace)
+                              |
+                             NPI
+                              |
+        +---------------------+---------------------+
+        |                     |                     |
+        v                     v                     v
+      LEIE              Open Payments         Part D Prescribers
+   (fraudeurs)         (paiements)            (prescriptions)
+        |                     |                     |
+        +----------+----------+----------+---------+
+                   |
+                   v
+            Provider Info / Hospice / LTCH / Home Health
+```
 
 ---
 
-## 4. Provider Information (Nursing Home / NH) (-2025)
-- **URL :** https://data.cms.gov/provider-data/sites/default/files/resources/66f260a1b66c08187c24fee8d189943b_1767384363/NH_ProviderInfo_Dec2025.csv
-- **Contenu :** Informations détaillées sur les prestataires (NPI, nom, adresse, type, spécialité).
-- **Usage :** Enrichissement des datasets Open Payments et Medicare Spending.
+## Structure S3
+
+```
+s3://ai-factory-bckt/
+    +-- raw/                          # CSV bruts (versiones + LATEST)
+    |   +-- leie/
+    |   +-- medicare_hospital_spending/
+    |   +-- open_payments/
+    |   +-- provider_information/
+    |   +-- longterm_care_hospital/
+    |   +-- hospice/
+    |   +-- home_health_care/
+    |   +-- medicare_part_d_prescribers/
+    |
+    +-- bronze/                       # Parquet (optimise pour Snowflake)
+        +-- leie/
+        +-- medicare_hospital_spending/
+        +-- open_payments/
+        +-- provider_information/
+        +-- longterm_care_hospital/
+        +-- hospice/
+        +-- home_health_care/
+        +-- medicare_part_d_prescribers/
+```
 
 ---
 
-## 5. Long-Term Care Hospital – General Information (-2025)
-- **URL :** https://data.cms.gov/provider-data/sites/default/files/resources/8e792480607df0e6a32bbc6ac99a2f31_1764691562/Long-Term_Care_Hospital-General_Information_Dec2025.csv
-- **Contenu :** Détails des hôpitaux de soins prolongés (NPI, adresse, type de soins).
-- **Usage :** Enrichir la localisation et le type des hôpitaux pour l’analyse.
+## Schema Snowflake (Medallion Architecture)
+
+| Schema | Description |
+|--------|-------------|
+| `RAW_DATA` | Donnees brutes depuis S3 Stage |
+| `BRONZE` | Donnees ingeres, typage initial |
+| `SILVER` | Donnees nettoyees, jointes, enrichies |
+| `GOLD` | Donnees prets pour l'analyse et BI |
 
 ---
 
-## 6. Hospice – General Information (-2025)
-- **URL :** https://data.cms.gov/provider-data/sites/default/files/resources/e49674eb0b3c2dd749563637f3b79a15_1763064336/Hospice_General-Information_Nov2025.csv
-- **Contenu :** Informations sur les établissements de soins palliatifs (adresse, type, NPI).
-- **Usage :** Ajouter le contexte des hospices pour les paiements et dépenses suspectes.
+## Stack Technique
+
+| Composant | Technologie |
+|-----------|-------------|
+| Orchestration | Apache Airflow 3.x (CeleryExecutor) |
+| Data Warehouse | Snowflake |
+| Data Lake | Amazon S3 |
+| Conteneurisation | Docker + Docker Compose |
+| Traitement | Python 3.12, Pandas, PyArrow |
+| Base metadonnees | PostgreSQL 16 |
+| Message Broker | Redis 7.2 |
 
 ---
 
-## 7. Home Health Care – Zip Codes (-2026)
-- **URL :** https://data.cms.gov/provider-data/sites/default/files/resources/9fc01e0ca9b64f045d2700d4f25ab35c_1767204341/HH_Zip_Jan2026.csv
-- **Contenu :** Prestataires de soins à domicile avec ZIP Codes.
-- **Usage :** Analyses géospatiales et détection de clusters de paiements anormaux.
+## Utilisation
+
+### Demarrer l'environnement
+```bash
+docker-compose up -d
+```
+
+### Lancer le pipeline complet
+```bash
+docker exec ai_factory-airflow-worker-1 airflow dags trigger master_dag
+```
+
+### Lancer un DAG individuel
+```bash
+docker exec ai_factory-airflow-worker-1 airflow dags trigger leie_download
+```
+
+### Acceder a l'interface Airflow
+- URL : http://localhost:8080
+- User : airflow
+- Password : airflow
 
 ---
 
-## 8. NPPES Provider Data (Snowflake) (-2026)
-- **Database / Schema :** `AFFINE_NPPES_PROVIDER_DATA.REF_DW`
-- **Contenu :** Informations détaillées sur tous les prestataires disposant d’un NPI aux États-Unis.
-- **Usage :** Enrichissement et jointures avec Open Payments et autres datasets.
+## Prochaines Etapes
+
+1. **Charger les donnees dans Snowflake** (COPY depuis S3 Stage)
+2. **Creer la couche Silver** (jointures via NPI, nettoyage)
+3. **Developper les regles de detection** (anomalies, croisements LEIE)
+4. **Creer la couche Gold** (features pour ML, dashboards)
 
 ---
 
-## 9. DAG Orchestrateur – Central Pipeline
-- **Nom du DAG :** `launchDAG`
-- **Description :** DAG central qui orchestre tous les DAGs CSV existants pour ingérer et transformer l’ensemble des datasets.
-- **Fonctionnement :**
-  - Liste des DAGs orchestrés :
-    - `leie_download`
-    - `medicare_hospital_spending_download`
-    - `open_payments_download`
-    - `provider_information_download`
-    - `longterm_care_hospital_download`
-    - `hospice_download`
-    - `home_health_care_download`
-  - Chaque DAG est déclenché via `TriggerDagRunOperator` et exécuté **en parallèle**.
-  - Le DAG attend la fin de chaque DAG déclenché avant de passer à l’étape suivante (`wait_for_completion=True`).
-  - Une tâche finale `summary_orchestrator` consigne dans les logs le **résumé des exécutions** pour chaque DAG déclenché.
-- **Usage :** Point central d’orchestration pour exécuter le pipeline complet et monitoré, permettant de maintenir la cohérence et de suivre les métriques globales.
-
----
-
-## 🔗 Liens entre datasets
-- **LEIE ↔ Open Payments** : NPI ou nom du prestataire  
-- **Open Payments ↔ Provider Information / Long-Term Care / Hospice / Home Health Care / NPPES** : NPI  
-- **Medicare Hospital Spending ↔ Provider Information / Long-Term Care** : NPI / Hospital ID  
-- **Home Health Care** : correspondance via ZIP Codes pour analyses géospatiales
-
----
-
-## Objectif
-Centraliser ces données pour créer un **pipeline Airflow + Snowflake** afin de générer des alertes et features pour la **détection de fraude médicale**.
-
----
-
-## Stack technique
-- Airflow pour l’orchestration des DAGs  
-- Snowflake pour le stockage et les transformations  
-- S3 pour le landing des fichiers bruts (bronze)  
-- Pandas / Python pour le traitement et la validation des fichiers
+## Auteur
+MooM - AI Factory Project
