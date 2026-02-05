@@ -1,0 +1,216 @@
+-- =============================================================================
+-- BRONZE TABLES DDL
+-- Tables pour charger les fichiers Parquet depuis S3
+-- Toutes les colonnes sont en VARCHAR car les Parquet sont en string
+-- =============================================================================
+
+USE DATABASE AI_FACTORY_DB;
+USE SCHEMA BRONZE;
+
+-- -----------------------------------------------------------------------------
+-- 1. LEIE - Excluded Individuals/Entities
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS LEIE (
+    LASTNAME VARCHAR,
+    FIRSTNAME VARCHAR,
+    MIDNAME VARCHAR,
+    BUSNAME VARCHAR,
+    GENERAL VARCHAR,
+    SPECIALTY VARCHAR,
+    UPIN VARCHAR,
+    NPI VARCHAR,
+    DOB VARCHAR,
+    ADDRESS VARCHAR,
+    CITY VARCHAR,
+    STATE VARCHAR,
+    ZIP VARCHAR,
+    EXCLTYPE VARCHAR,
+    EXCLDATE VARCHAR,
+    REINDATE VARCHAR,
+    WAIVERDATE VARCHAR,
+    WVRSTATE VARCHAR,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 2. Medicare Hospital Spending by Claim
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS MEDICARE_HOSPITAL_SPENDING (
+    FACILITY_ID VARCHAR,
+    FACILITY_NAME VARCHAR,
+    ADDRESS VARCHAR,
+    CITY VARCHAR,
+    STATE VARCHAR,
+    ZIP_CODE VARCHAR,
+    COUNTY_NAME VARCHAR,
+    PHONE_NUMBER VARCHAR,
+    CLAIM_TYPE VARCHAR,
+    PERIOD VARCHAR,
+    AVG_SPENDING_PER_EPISODE_HOSPITAL VARCHAR,
+    AVG_SPENDING_PER_EPISODE_STATE VARCHAR,
+    AVG_SPENDING_PER_EPISODE_NATION VARCHAR,
+    PERCENT_OF_SPENDING_HOSPITAL VARCHAR,
+    PERCENT_OF_SPENDING_STATE VARCHAR,
+    PERCENT_OF_SPENDING_NATION VARCHAR,
+    START_DATE VARCHAR,
+    END_DATE VARCHAR,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 3. Open Payments - General Payments
+-- NOTE: Ce fichier a ~100+ colonnes, on utilise VARIANT pour flexibilite
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS OPEN_PAYMENTS_GENERAL (
+    DATA VARIANT,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 4. Open Payments - Research Payments
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS OPEN_PAYMENTS_RESEARCH (
+    DATA VARIANT,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 5. Open Payments - Ownership
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS OPEN_PAYMENTS_OWNERSHIP (
+    DATA VARIANT,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 6. Provider Information (Nursing Home)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS PROVIDER_INFORMATION (
+    FEDERAL_PROVIDER_NUMBER VARCHAR,
+    PROVIDER_NAME VARCHAR,
+    PROVIDER_ADDRESS VARCHAR,
+    PROVIDER_CITY VARCHAR,
+    PROVIDER_STATE VARCHAR,
+    PROVIDER_ZIP_CODE VARCHAR,
+    PROVIDER_PHONE_NUMBER VARCHAR,
+    PROVIDER_SSA_COUNTY_CODE VARCHAR,
+    PROVIDER_COUNTY_NAME VARCHAR,
+    OWNERSHIP_TYPE VARCHAR,
+    NUMBER_OF_CERTIFIED_BEDS VARCHAR,
+    NUMBER_OF_RESIDENTS VARCHAR,
+    AVERAGE_NUMBER_OF_RESIDENTS_PER_DAY VARCHAR,
+    PROVIDER_TYPE VARCHAR,
+    PROVIDER_RESIDES_IN_HOSPITAL VARCHAR,
+    LEGAL_BUSINESS_NAME VARCHAR,
+    DATE_FIRST_APPROVED_TO_PROVIDE_MEDICARE_AND_MEDICAID_SERVICES VARCHAR,
+    CONTINUING_CARE_RETIREMENT_COMMUNITY VARCHAR,
+    SPECIAL_FOCUS_FACILITY VARCHAR,
+    OVERALL_RATING VARCHAR,
+    HEALTH_INSPECTION_RATING VARCHAR,
+    STAFFING_RATING VARCHAR,
+    QM_RATING VARCHAR,
+    LOCATION VARCHAR,
+    PROCESSING_DATE VARCHAR,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 7. Long-Term Care Hospital
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS LONGTERM_CARE_HOSPITAL (
+    CMS_CERTIFICATION_NUMBER VARCHAR,
+    FACILITY_NAME VARCHAR,
+    ADDRESS VARCHAR,
+    CITY VARCHAR,
+    STATE VARCHAR,
+    ZIP_CODE VARCHAR,
+    COUNTY_NAME VARCHAR,
+    PHONE_NUMBER VARCHAR,
+    CMS_REGION VARCHAR,
+    MEASURE_CODE VARCHAR,
+    SCORE VARCHAR,
+    FOOTNOTE VARCHAR,
+    START_DATE VARCHAR,
+    END_DATE VARCHAR,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 8. Hospice
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS HOSPICE (
+    CMS_CERTIFICATION_NUMBER VARCHAR,
+    FACILITY_NAME VARCHAR,
+    ADDRESS_LINE_1 VARCHAR,
+    ADDRESS_LINE_2 VARCHAR,
+    CITY VARCHAR,
+    STATE VARCHAR,
+    ZIP_CODE VARCHAR,
+    COUNTY_NAME VARCHAR,
+    PHONE_NUMBER VARCHAR,
+    CMS_REGION VARCHAR,
+    OWNERSHIP_TYPE VARCHAR,
+    CERTIFICATION_DATE VARCHAR,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 9. Home Health Care
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS HOME_HEALTH_CARE (
+    CMS_CERTIFICATION_NUMBER VARCHAR,
+    PROVIDER_NAME VARCHAR,
+    ADDRESS VARCHAR,
+    CITY VARCHAR,
+    STATE VARCHAR,
+    ZIP_CODE VARCHAR,
+    PHONE VARCHAR,
+    TYPE_OF_OWNERSHIP VARCHAR,
+    OFFERS_NURSING_CARE VARCHAR,
+    OFFERS_PHYSICAL_THERAPY VARCHAR,
+    OFFERS_OCCUPATIONAL_THERAPY VARCHAR,
+    OFFERS_SPEECH_PATHOLOGY VARCHAR,
+    OFFERS_MEDICAL_SOCIAL_SERVICES VARCHAR,
+    OFFERS_HOME_HEALTH_AIDE_SERVICES VARCHAR,
+    DATE_CERTIFIED VARCHAR,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);
+
+-- -----------------------------------------------------------------------------
+-- 10. Medicare Part D Prescribers
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS MEDICARE_PART_D_PRESCRIBERS (
+    PRSCRBR_NPI VARCHAR,
+    PRSCRBR_LAST_ORG_NAME VARCHAR,
+    PRSCRBR_FIRST_NAME VARCHAR,
+    PRSCRBR_CITY VARCHAR,
+    PRSCRBR_STATE_ABRVTN VARCHAR,
+    PRSCRBR_STATE_FIPS VARCHAR,
+    PRSCRBR_TYPE VARCHAR,
+    PRSCRBR_TYPE_SRC VARCHAR,
+    BRND_NAME VARCHAR,
+    GNRC_NAME VARCHAR,
+    TOT_CLMS VARCHAR,
+    TOT_30DAY_FILLS VARCHAR,
+    TOT_DAY_SUPLY VARCHAR,
+    TOT_DRUG_CST VARCHAR,
+    TOT_BENES VARCHAR,
+    GE65_SPRSN_FLAG VARCHAR,
+    GE65_TOT_CLMS VARCHAR,
+    GE65_TOT_30DAY_FILLS VARCHAR,
+    GE65_TOT_DAY_SUPLY VARCHAR,
+    GE65_TOT_DRUG_CST VARCHAR,
+    GE65_BENE_SPRSN_FLAG VARCHAR,
+    GE65_TOT_BENES VARCHAR,
+    _LOAD_TIMESTAMP TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    _SOURCE_FILE VARCHAR
+);

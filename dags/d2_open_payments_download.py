@@ -98,29 +98,45 @@ with DAG(
             local_csv_path = os.path.join(extract_dir, csv_file)
             file_base = csv_file.replace('.csv', '')
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            file_size_mb = os.path.getsize(local_csv_path) / (1024 * 1024)
 
-            logger.info(f"Traitement de {csv_file}...")
+            logger.info(f"Traitement de {csv_file} ({file_size_mb:.1f} MB)...")
 
-            # --- Upload raw CSV ---
+            # --- Upload raw CSV (multipart pour gros fichiers) ---
             s3_key_versioned = f"{S3_PREFIX_RAW}/{file_base}_{timestamp}.csv"
             s3_key_latest = f"{S3_PREFIX_RAW}/{file_base}_LATEST.csv"
-            s3.upload_file(local_csv_path, S3_BUCKET, s3_key_versioned)
-            s3.upload_file(local_csv_path, S3_BUCKET, s3_key_latest)
+
+            from boto3.s3.transfer import TransferConfig
+            config = TransferConfig(multipart_threshold=50*1024*1024, multipart_chunksize=50*1024*1024)
+            s3.upload_file(local_csv_path, S3_BUCKET, s3_key_versioned, Config=config)
+            s3.upload_file(local_csv_path, S3_BUCKET, s3_key_latest, Config=config)
             uploaded_raw.append(s3_key_versioned)
             logger.info(f"CSV uploade vers S3 raw: {s3_key_latest}")
 
             # --- Convert to Parquet (chunked) & Upload bronze ---
             parquet_local_path = f"/tmp/{file_base}.parquet"
-            chunk_size = 100000
+            chunk_size = 50000  # Reduit pour economiser la memoire
             pq_writer = None
+            columns = None
 
             try:
-                for i, chunk in enumerate(pd.read_csv(local_csv_path, chunksize=chunk_size, low_memory=False)):
-                    table = pa.Table.from_pandas(chunk)
+                # Forcer tous les types en string pour eviter les conflits de schema
+                for i, chunk in enumerate(pd.read_csv(local_csv_path, chunksize=chunk_size, dtype=str, low_memory=False, na_values=[], keep_default_na=False)):
+                    # Remplacer les NaN par des strings vides
+                    chunk = chunk.fillna('')
+
                     if pq_writer is None:
-                        pq_writer = pq.ParquetWriter(parquet_local_path, table.schema)
+                        columns = chunk.columns.tolist()
+                        # Creer un schema ou toutes les colonnes sont des strings
+                        schema = pa.schema([(col, pa.string()) for col in columns])
+                        pq_writer = pq.ParquetWriter(parquet_local_path, schema)
+
+                    # S'assurer que les colonnes sont dans le meme ordre
+                    chunk = chunk[columns]
+                    table = pa.Table.from_pandas(chunk, schema=schema, preserve_index=False)
                     pq_writer.write_table(table)
-                    if i % 10 == 0:
+
+                    if i % 20 == 0:
                         logger.info(f"  {csv_file}: chunk {i} traite ({(i+1)*chunk_size:,} lignes)")
 
                 if pq_writer:

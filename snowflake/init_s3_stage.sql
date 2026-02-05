@@ -1,7 +1,8 @@
 USE DATABASE AI_FACTORY_DB;
-USE SCHEMA RAW_DATA;
+USE SCHEMA BRONZE;
 
-CREATE OR REPLACE STAGE S3_STAGE
+CREATE OR REPLACE STAGE BRONZE_S3_STAGE
   STORAGE_INTEGRATION = S3_INTEGRATION
-  URL = 's3://ai-factory-bckt/raw/'
-  COMMENT = 'Stage externe pour les fichiers bruts du projet AI Factory';
+  URL = 's3://ai-factory-bckt/bronze/'
+  FILE_FORMAT = (TYPE = PARQUET)
+  COMMENT = 'Stage externe pour les fichiers Parquet bronze du projet AI Factory';
