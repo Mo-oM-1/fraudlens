@@ -34,14 +34,14 @@ jobs:
 
       - name: Setup Snowflake private key
         run: |
-          mkdir -p ~/.snowflake
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > ~/.snowflake/rsa_key.p8
-          chmod 600 ~/.snowflake/rsa_key.p8
+          mkdir -p $HOME/.snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > $HOME/.snowflake/rsa_key.p8
+          chmod 600 $HOME/.snowflake/rsa_key.p8
 
       - name: Create profiles.yml for CI
         run: |
-          mkdir -p ~/.dbt
-          cat > ~/.dbt/profiles.yml << EOF
+          mkdir -p $HOME/.dbt
+          cat > $HOME/.dbt/profiles.yml << EOF
           fraudlens:
             target: ci
             outputs:
@@ -49,7 +49,7 @@ jobs:
                 type: snowflake
                 account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
                 user: ${{ secrets.SNOWFLAKE_USER }}
-                private_key_path: ~/.snowflake/rsa_key.p8
+                private_key_path: $HOME/.snowflake/rsa_key.p8
                 role: ACCOUNTADMIN
                 database: ${{ secrets.SNOWFLAKE_DATABASE }}
                 warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
@@ -59,20 +59,20 @@ jobs:
 
       - name: Verify dbt connection
         working-directory: ./dbt
-        run: dbt debug --profiles-dir ~/.dbt
+        run: dbt debug --profiles-dir $HOME/.dbt
 
       - name: Install dbt packages
         working-directory: ./dbt
-        run: dbt deps --profiles-dir ~/.dbt
+        run: dbt deps --profiles-dir $HOME/.dbt
 
       - name: Compile dbt models
         working-directory: ./dbt
-        run: dbt compile --profiles-dir ~/.dbt
+        run: dbt compile --profiles-dir $HOME/.dbt
 
       - name: Run dbt tests
         working-directory: ./dbt
-        run: dbt test --select staging silver gold --profiles-dir ~/.dbt
+        run: dbt test --select staging silver gold --profiles-dir $HOME/.dbt
 
       - name: Generate docs
         working-directory: ./dbt
-        run: dbt docs generate --profiles-dir ~/.dbt
+        run: dbt docs generate --profiles-dir $HOME/.dbt
