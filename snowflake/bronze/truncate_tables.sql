@@ -1,0 +1,16 @@
+-- =============================================================================
+-- TRUNCATE BRONZE TABLES
+-- Full refresh - vide les tables avant rechargement
+-- Note: Open Payments tables sont recréées avec CREATE OR REPLACE
+-- =============================================================================
+
+USE DATABASE AI_FACTORY_DB;
+USE SCHEMA BRONZE;
+
+TRUNCATE TABLE IF EXISTS LEIE;
+TRUNCATE TABLE IF EXISTS MEDICARE_HOSPITAL_SPENDING;
+TRUNCATE TABLE IF EXISTS PROVIDER_INFORMATION;
+TRUNCATE TABLE IF EXISTS LONGTERM_CARE_HOSPITAL;
+TRUNCATE TABLE IF EXISTS HOSPICE;
+TRUNCATE TABLE IF EXISTS HOME_HEALTH_CARE;
+TRUNCATE TABLE IF EXISTS MEDICARE_PART_D_PRESCRIBERS;

@@ -49,14 +49,14 @@ with DAG(
     )
 
     # -------------------------------------------------------------------
-    # TASK 3 : Create S3 stage
+    # TASK 3 : Create file format and S3 stage
     # Peut utiliser snowflake_default car warehouse et DB existent
     # -------------------------------------------------------------------
     create_s3_stage = SnowflakeSqlApiOperator(
         task_id='create_s3_stage',
         snowflake_conn_id='snowflake_default',
         sql='init_s3_stage.sql',
-        statement_count=3,
+        statement_count=4,
     )
 
     # -------------------------------------------------------------------

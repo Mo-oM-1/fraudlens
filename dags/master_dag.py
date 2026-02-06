@@ -78,11 +78,29 @@ with DAG(
     # -------------------------------------------------------------------
     all_downloads_complete = EmptyOperator(
         task_id='all_downloads_complete',
-        trigger_rule='all_success',  # Attend que tous les DAGs réussissent
+        trigger_rule='all_success',
+    )
+
+    # -------------------------------------------------------------------
+    # TASK 5 : Charger les données dans Snowflake Bronze
+    # -------------------------------------------------------------------
+    load_bronze = TriggerDagRunOperator(
+        task_id='load_bronze_tables',
+        trigger_dag_id='load_bronze_tables',
+        wait_for_completion=True,
+        poke_interval=60,
+        failed_states=['failed'],
+    )
+
+    # -------------------------------------------------------------------
+    # TASK 6 : Pipeline terminé
+    # -------------------------------------------------------------------
+    pipeline_complete = EmptyOperator(
+        task_id='pipeline_complete',
     )
 
     # -------------------------------------------------------------------
     # DEPENDENCIES
-    # init_snowflake -> start_downloads -> [tous les DAGs en //] -> complete
     # -------------------------------------------------------------------
     init_snowflake >> start_downloads >> download_tasks >> all_downloads_complete
+    all_downloads_complete >> load_bronze >> pipeline_complete
