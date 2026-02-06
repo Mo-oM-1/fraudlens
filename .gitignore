@@ -22,5 +22,10 @@ dbt/logs/
 dbt/.user.yml
 dbt/package-lock.yml
 
+# Secrets (ne jamais commit)
+dashboard/.streamlit/secrets.toml
+*.secret
+*.credentials
+
 # macOS
 .DS_Store
