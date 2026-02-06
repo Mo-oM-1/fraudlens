@@ -18,8 +18,8 @@ clean-targets:
 models:
   ai_factory:
     staging:
-      +schema: staging
+      +schema: STAGING
       +materialized: view
     silver:
-      +schema: silver
+      +schema: SILVER
       +materialized: table

@@ -9,5 +9,5 @@ ai_factory:
       role: ACCOUNTADMIN
       database: AI_FACTORY_DB
       warehouse: AI_FACTORY_WH
-      schema: SILVER
+      schema: PUBLIC
       threads: 4

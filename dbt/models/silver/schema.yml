@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: silver_provider
+  - name: provider
     description: "Provider master table enriched with NPPES data and exclusion status"
     columns:
       - name: NPI
@@ -19,7 +19,7 @@ models:
         tests:
           - not_null
 
-  - name: silver_excluded_providers
+  - name: excluded_providers
     description: "LEIE excluded providers enriched with NPPES data"
     columns:
       - name: EXCLUSION_ID
@@ -40,7 +40,7 @@ models:
         tests:
           - not_null
 
-  - name: silver_payments
+  - name: payments
     description: "Consolidated Open Payments (General, Research, Ownership)"
     columns:
       - name: PAYMENT_ID
@@ -64,7 +64,7 @@ models:
         tests:
           - not_null
 
-  - name: silver_prescriptions
+  - name: prescriptions
     description: "Medicare Part D prescriptions with fraud indicators"
     columns:
       - name: PRESCRIPTION_ID
@@ -86,7 +86,7 @@ models:
         tests:
           - not_null
 
-  - name: silver_facilities
+  - name: facilities
     description: "Unified healthcare facilities (Hospice, Home Health, LTCH, Nursing Homes)"
     columns:
       - name: FACILITY_ID
@@ -110,7 +110,7 @@ models:
           - accepted_values:
               values: ['FOR_PROFIT', 'NON_PROFIT', 'GOVERNMENT', 'OTHER']
 
-  - name: silver_hospital_spending
+  - name: hospital_spending
     description: "Medicare hospital spending with benchmarks"
     columns:
       - name: SPENDING_ID
