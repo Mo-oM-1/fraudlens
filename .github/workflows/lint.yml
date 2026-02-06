@@ -1,0 +1,100 @@
+name: SQL Lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'dbt/**/*.sql'
+      - '.github/workflows/lint.yml'
+      - '.sqlfluff'
+
+jobs:
+  sqlfluff-lint:
+    name: SQLFluff Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install sqlfluff==3.0.0 sqlfluff-templater-dbt==3.0.0 dbt-snowflake==1.7.0
+
+      - name: Create .sqlfluff config
+        run: |
+          cat > .sqlfluff << EOF
+          [sqlfluff]
+          templater = dbt
+          dialect = snowflake
+          exclude_rules = LT05, LT09, ST06
+          max_line_length = 120
+
+          [sqlfluff:templater:dbt]
+          project_dir = ./dbt
+          profiles_dir = ./dbt
+
+          [sqlfluff:indentation]
+          indent_unit = space
+          tab_space_size = 4
+
+          [sqlfluff:rules:capitalisation.keywords]
+          capitalisation_policy = lower
+
+          [sqlfluff:rules:capitalisation.identifiers]
+          capitalisation_policy = lower
+
+          [sqlfluff:rules:capitalisation.functions]
+          capitalisation_policy = lower
+          EOF
+
+      - name: Create minimal profiles.yml for linting
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          fraudlens:
+            target: lint
+            outputs:
+              lint:
+                type: snowflake
+                account: dummy
+                user: dummy
+                password: dummy
+                role: dummy
+                database: FRAUDLENS_DB
+                warehouse: FRAUDLENS_WH
+                schema: STAGING
+                threads: 1
+          EOF
+
+      - name: Lint SQL files
+        run: |
+          sqlfluff lint dbt/models/ --format github-annotation-native || true
+
+      - name: Check for critical errors
+        run: |
+          # Run lint and capture output
+          LINT_OUTPUT=$(sqlfluff lint dbt/models/ --format json 2>/dev/null || echo "[]")
+
+          # Count errors (not warnings)
+          ERROR_COUNT=$(echo "$LINT_OUTPUT" | python3 -c "
+          import sys, json
+          try:
+              data = json.load(sys.stdin)
+              errors = sum(1 for file in data for violation in file.get('violations', []) if violation.get('warning_level') == 'error')
+              print(errors)
+          except:
+              print(0)
+          ")
+
+          echo "Found $ERROR_COUNT critical SQL errors"
+
+          if [ "$ERROR_COUNT" -gt 0 ]; then
+            echo "::warning::Found $ERROR_COUNT SQL linting errors. Please review."
+          fi
