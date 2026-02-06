@@ -140,6 +140,8 @@ final as (
 
     from provider_with_taxonomy p
     left join excluded_providers e on p.NPI = e.NPI
+    -- Deduplicate: keep one row per NPI (most recently updated)
+    qualify row_number() over (partition by p.NPI order by p.LAST_UPDATE_DATE desc nulls last) = 1
 )
 
 select * from final

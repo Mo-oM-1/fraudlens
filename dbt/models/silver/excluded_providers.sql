@@ -177,6 +177,8 @@ final as (
         current_timestamp() as _loaded_at
 
     from enriched
+    -- Deduplicate: keep one row per EXCLUSION_ID (most recent exclusion date)
+    qualify row_number() over (partition by EXCLUSION_ID order by EXCLUSION_DATE desc nulls last) = 1
 )
 
 select * from final

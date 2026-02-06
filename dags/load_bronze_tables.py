@@ -26,7 +26,7 @@ def create_open_payments_table(table_name: str, file_path: str, **context):
     hook = SnowflakeHook(snowflake_conn_id='snowflake_default')
 
     sql = f"""
-    USE DATABASE AI_FACTORY_DB;
+    USE DATABASE FRAUDLENS_DB;
     USE SCHEMA BRONZE;
 
     CREATE OR REPLACE TABLE {table_name}
@@ -44,7 +44,7 @@ def create_open_payments_table(table_name: str, file_path: str, **context):
 
     # Get column count
     col_result = hook.get_first(f"""
-        SELECT COUNT(*) FROM AI_FACTORY_DB.INFORMATION_SCHEMA.COLUMNS
+        SELECT COUNT(*) FROM FRAUDLENS_DB.INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = 'BRONZE' AND TABLE_NAME = '{table_name}'
     """)
     col_count = col_result[0] if col_result else 0
@@ -56,7 +56,7 @@ def load_open_payments_table(table_name: str, file_path: str, **context):
     hook = SnowflakeHook(snowflake_conn_id='snowflake_default')
 
     sql = f"""
-    USE DATABASE AI_FACTORY_DB;
+    USE DATABASE FRAUDLENS_DB;
     USE SCHEMA BRONZE;
 
     COPY INTO {table_name}
@@ -74,7 +74,7 @@ def load_open_payments_table(table_name: str, file_path: str, **context):
             logger.info(f"COPY result: {row}")
 
     # Get row count
-    count_result = hook.get_first(f"SELECT COUNT(*) FROM AI_FACTORY_DB.BRONZE.{table_name}")
+    count_result = hook.get_first(f"SELECT COUNT(*) FROM FRAUDLENS_DB.BRONZE.{table_name}")
     row_count = count_result[0] if count_result else 0
     logger.info(f"Table {table_name} loaded successfully - {row_count:,} rows")
 

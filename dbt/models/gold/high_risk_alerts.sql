@@ -95,37 +95,37 @@ prescriptions_by_excluded_alerts as (
         {{ dbt_utils.generate_surrogate_key(['NPI', "'PRESCRIPTION_BY_EXCLUDED'"]) }} as ALERT_ID,
         'PRESCRIPTION_BY_EXCLUDED' as ALERT_TYPE,
         NPI,
-        PRESCRIBER_NAME as PROVIDER_NAME,
-        SPECIALTY,
+        PRESCRIBER_FULL_NAME as PROVIDER_NAME,
+        PRESCRIBER_TYPE as SPECIALTY,
         STATE,
         95 as RISK_SCORE,
         'CRITICAL' as RISK_TIER,
-        'Excluded provider prescribed ' || SUM(TOTAL_CLAIMS) || ' claims totaling $' || ROUND(SUM(TOTAL_COST), 2) as ALERT_DESCRIPTION,
-        SUM(TOTAL_COST) as FINANCIAL_EXPOSURE,
+        'Excluded provider prescribed ' || SUM(TOTAL_CLAIMS) || ' claims totaling $' || ROUND(SUM(TOTAL_DRUG_COST), 2) as ALERT_DESCRIPTION,
+        SUM(TOTAL_DRUG_COST) as FINANCIAL_EXPOSURE,
         'PENDING' as ALERT_STATUS,
         current_date() as ALERT_DATE
     from prescriptions
     where NPI is not null
-    group by NPI, PRESCRIBER_NAME, SPECIALTY, STATE
+    group by NPI, PRESCRIBER_FULL_NAME, PRESCRIBER_TYPE, STATE
 ),
 
--- Alert Type 5: High Opioid Prescribers
-high_opioid_alerts as (
+-- Alert Type 5: High Brand Prescribers (potential kickback indicator)
+high_brand_alerts as (
     select
-        {{ dbt_utils.generate_surrogate_key(['NPI', "'HIGH_OPIOID_PRESCRIBER'"]) }} as ALERT_ID,
-        'HIGH_OPIOID_PRESCRIBER' as ALERT_TYPE,
+        {{ dbt_utils.generate_surrogate_key(['NPI', "'HIGH_BRAND_PRESCRIBER'"]) }} as ALERT_ID,
+        'HIGH_BRAND_PRESCRIBER' as ALERT_TYPE,
         NPI,
         COALESCE(FULL_NAME, ORGANIZATION_NAME) as PROVIDER_NAME,
         SPECIALTY,
         STATE,
         FRAUD_RISK_SCORE as RISK_SCORE,
         'HIGH' as RISK_TIER,
-        'Provider has ' || PCT_OPIOID_CLAIMS || '% opioid prescription rate (' || OPIOID_RISK_TIER || ')' as ALERT_DESCRIPTION,
+        'Provider has ' || PCT_BRAND_CLAIMS || '% brand prescription rate (potential kickback indicator)' as ALERT_DESCRIPTION,
         TOTAL_PRESCRIPTION_COST as FINANCIAL_EXPOSURE,
         'PENDING' as ALERT_STATUS,
         current_date() as ALERT_DATE
     from fraud_scores
-    where OPIOID_RISK_TIER = 'CRITICAL_OPIOID'
+    where IS_HIGH_BRAND_PRESCRIBER = true
       and NOT IS_EXCLUDED  -- Excluded providers already have alerts
 ),
 
@@ -138,7 +138,7 @@ all_alerts as (
     union all
     select * from prescriptions_by_excluded_alerts
     union all
-    select * from high_opioid_alerts
+    select * from high_brand_alerts
 ),
 
 final as (
@@ -162,7 +162,7 @@ final as (
             when ALERT_TYPE = 'PRESCRIPTION_BY_EXCLUDED' then 2
             when ALERT_TYPE = 'PAYMENT_TO_EXCLUDED' then 3
             when ALERT_TYPE = 'HIGH_RISK_SCORE' and RISK_TIER = 'CRITICAL' then 4
-            when ALERT_TYPE = 'HIGH_OPIOID_PRESCRIBER' then 5
+            when ALERT_TYPE = 'HIGH_BRAND_PRESCRIBER' then 5
             else 6
         end as PRIORITY_RANK,
 

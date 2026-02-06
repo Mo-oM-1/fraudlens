@@ -19,31 +19,26 @@ with prescriptions as (
 provider_prescriptions as (
     select
         NPI,
-        PRESCRIBER_NAME,
-        SPECIALTY,
-        STATE,
+        MAX(PRESCRIBER_FULL_NAME) as PRESCRIBER_NAME,
+        MAX(PRESCRIBER_TYPE) as SPECIALTY,
+        MAX(STATE) as STATE,
 
         -- Volume metrics
         COUNT(*) as TOTAL_DRUG_RECORDS,
         SUM(TOTAL_CLAIMS) as TOTAL_CLAIMS,
         SUM(TOTAL_BENEFICIARIES) as TOTAL_BENEFICIARIES,
-        SUM(TOTAL_30_DAY_FILLS) as TOTAL_30_DAY_FILLS,
+        SUM(TOTAL_30DAY_FILLS) as TOTAL_30_DAY_FILLS,
 
         -- Cost metrics
-        SUM(TOTAL_COST) as TOTAL_COST,
+        SUM(TOTAL_DRUG_COST) as TOTAL_COST,
         ROUND(AVG(AVG_COST_PER_CLAIM), 2) as AVG_COST_PER_CLAIM,
 
         -- Unique drugs prescribed
-        COUNT(DISTINCT DRUG_NAME) as UNIQUE_DRUGS_PRESCRIBED,
-
-        -- Opioid metrics
-        SUM(case when IS_OPIOID then TOTAL_CLAIMS else 0 end) as OPIOID_CLAIMS,
-        SUM(case when IS_OPIOID then TOTAL_COST else 0 end) as OPIOID_COST,
-        COUNT(DISTINCT case when IS_OPIOID then DRUG_NAME end) as UNIQUE_OPIOIDS_PRESCRIBED,
+        COUNT(DISTINCT GENERIC_NAME) as UNIQUE_DRUGS_PRESCRIBED,
 
         -- Brand vs Generic
-        SUM(case when IS_BRAND then TOTAL_CLAIMS else 0 end) as BRAND_CLAIMS,
-        SUM(case when IS_BRAND then TOTAL_COST else 0 end) as BRAND_COST,
+        SUM(case when DRUG_TYPE = 'BRAND' then TOTAL_CLAIMS else 0 end) as BRAND_CLAIMS,
+        SUM(case when DRUG_TYPE = 'BRAND' then TOTAL_DRUG_COST else 0 end) as BRAND_COST,
 
         -- Risk distribution
         COUNT(case when RISK_TIER = 'CRITICAL' then 1 end) as CRITICAL_RISK_DRUGS,
@@ -54,7 +49,7 @@ provider_prescriptions as (
         MAX(case when IS_PRESCRIBER_EXCLUDED then 1 else 0 end) as IS_EXCLUDED
 
     from prescriptions
-    group by NPI, PRESCRIBER_NAME, SPECIALTY, STATE
+    group by NPI
 ),
 
 final as (
@@ -79,13 +74,6 @@ final as (
         -- Drug diversity
         UNIQUE_DRUGS_PRESCRIBED,
 
-        -- Opioid analysis
-        OPIOID_CLAIMS,
-        OPIOID_COST,
-        UNIQUE_OPIOIDS_PRESCRIBED,
-        case when TOTAL_CLAIMS > 0 then ROUND(OPIOID_CLAIMS * 100.0 / TOTAL_CLAIMS, 2) else 0 end as PCT_OPIOID_CLAIMS,
-        case when TOTAL_COST > 0 then ROUND(OPIOID_COST * 100.0 / TOTAL_COST, 2) else 0 end as PCT_OPIOID_COST,
-
         -- Brand preference
         BRAND_CLAIMS,
         BRAND_COST,
@@ -108,14 +96,6 @@ final as (
             when TOTAL_CLAIMS >= 1000 then 'MEDIUM_VOLUME'
             else 'LOW_VOLUME'
         end as PRESCRIBER_VOLUME_TIER,
-
-        -- Opioid risk tier
-        case
-            when PCT_OPIOID_CLAIMS >= 50 then 'CRITICAL_OPIOID'
-            when PCT_OPIOID_CLAIMS >= 25 then 'HIGH_OPIOID'
-            when PCT_OPIOID_CLAIMS >= 10 then 'MODERATE_OPIOID'
-            else 'LOW_OPIOID'
-        end as OPIOID_RISK_TIER,
 
         current_timestamp() as _loaded_at
 

@@ -46,22 +46,16 @@ risk_calculation as (
           end
         + case when PCT_HIGH_RISK_PAYMENTS >= 50 then 10 else PCT_HIGH_RISK_PAYMENTS / 10 end
 
-        -- PRESCRIPTION RISKS (30 points max)
-        + case
-            when OPIOID_RISK_TIER = 'CRITICAL_OPIOID' then 15
-            when OPIOID_RISK_TIER = 'HIGH_OPIOID' then 10
-            when OPIOID_RISK_TIER = 'MODERATE_OPIOID' then 5
-            else 0
-          end
+        -- PRESCRIPTION RISKS (20 points max)
         + case when PCT_BRAND_CLAIMS >= 80 then 10 else PCT_BRAND_CLAIMS / 10 end
-        + case when TOTAL_HIGH_RISK_DRUGS >= 10 then 5 else TOTAL_HIGH_RISK_DRUGS / 2 end
+        + case when TOTAL_HIGH_RISK_DRUGS >= 10 then 10 else TOTAL_HIGH_RISK_DRUGS end
 
-        -- ACTIVITY ANOMALIES (10 points max)
+        -- ACTIVITY ANOMALIES (20 points max)
         + case
-            when HAS_PHARMA_PAYMENTS and HAS_PRESCRIPTIONS then 5  -- Both activities
+            when HAS_PHARMA_PAYMENTS and HAS_PRESCRIPTIONS then 10  -- Both activities
             else 0
           end
-        + case when IS_NPI_ACTIVE = false and (HAS_PHARMA_PAYMENTS or HAS_PRESCRIPTIONS) then 5 else 0 end
+        + case when IS_NPI_ACTIVE = false and (HAS_PHARMA_PAYMENTS or HAS_PRESCRIPTIONS) then 10 else 0 end
 
         as RAW_RISK_SCORE,
 
@@ -70,8 +64,6 @@ risk_calculation as (
         IS_EXCLUDED_HIGH_RISK,
         RECIPIENT_TIER,
         PCT_HIGH_RISK_PAYMENTS,
-        OPIOID_RISK_TIER,
-        PCT_OPIOID_CLAIMS,
         PCT_BRAND_CLAIMS,
         TOTAL_HIGH_RISK_DRUGS,
         HAS_PHARMA_PAYMENTS,
@@ -108,7 +100,6 @@ final as (
         -- Risk flags (for filtering)
         IS_EXCLUDED,
         IS_EXCLUDED_HIGH_RISK,
-        case when OPIOID_RISK_TIER in ('CRITICAL_OPIOID', 'HIGH_OPIOID') then true else false end as IS_HIGH_OPIOID_PRESCRIBER,
         case when PCT_BRAND_CLAIMS >= 80 then true else false end as IS_HIGH_BRAND_PRESCRIBER,
         case when RECIPIENT_TIER in ('MEGA_RECIPIENT', 'MAJOR_RECIPIENT') then true else false end as IS_MAJOR_PAYMENT_RECIPIENT,
 
@@ -119,9 +110,7 @@ final as (
 
         -- Component scores (for analysis)
         RECIPIENT_TIER,
-        OPIOID_RISK_TIER,
         PCT_HIGH_RISK_PAYMENTS,
-        PCT_OPIOID_CLAIMS,
         PCT_BRAND_CLAIMS,
         TOTAL_HIGH_RISK_DRUGS,
 

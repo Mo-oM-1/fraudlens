@@ -93,7 +93,18 @@ with DAG(
     )
 
     # -------------------------------------------------------------------
-    # TASK 6 : Pipeline terminé
+    # TASK 6 : Transformations dbt (Silver + Gold)
+    # -------------------------------------------------------------------
+    dbt_transformations = TriggerDagRunOperator(
+        task_id='dbt_transformations',
+        trigger_dag_id='dbt_transformations',
+        wait_for_completion=True,
+        poke_interval=60,
+        failed_states=['failed'],
+    )
+
+    # -------------------------------------------------------------------
+    # TASK 7 : Pipeline terminé
     # -------------------------------------------------------------------
     pipeline_complete = EmptyOperator(
         task_id='pipeline_complete',
@@ -103,4 +114,4 @@ with DAG(
     # DEPENDENCIES
     # -------------------------------------------------------------------
     init_snowflake >> start_downloads >> download_tasks >> all_downloads_complete
-    all_downloads_complete >> load_bronze >> pipeline_complete
+    all_downloads_complete >> load_bronze >> dbt_transformations >> pipeline_complete

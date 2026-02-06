@@ -1,4 +1,4 @@
-ai_factory:
+fraudlens:
   target: prod
   outputs:
     prod:
@@ -7,7 +7,7 @@ ai_factory:
       user: "{{ env_var('SNOWFLAKE_USER') }}"
       private_key_path: /opt/airflow/snowflake/keys/rsa_key.p8
       role: ACCOUNTADMIN
-      database: AI_FACTORY_DB
-      warehouse: AI_FACTORY_WH
+      database: FRAUDLENS_DB
+      warehouse: FRAUDLENS_WH
       schema: PUBLIC
       threads: 4

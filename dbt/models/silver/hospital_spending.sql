@@ -55,6 +55,7 @@ cleaned as (
 
     from spending
     where STATE is not null
+      and FACILITY_ID is not null  -- Filter out null CCNs
 ),
 
 with_benchmarks as (
@@ -143,6 +144,8 @@ final as (
         current_timestamp() as _loaded_at
 
     from with_benchmarks
+    -- Deduplicate: keep one row per SPENDING_ID
+    qualify row_number() over (partition by SPENDING_ID order by _LOAD_TIMESTAMP desc) = 1
 )
 
 select * from final

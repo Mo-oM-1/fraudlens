@@ -45,7 +45,7 @@ with DAG(
         task_id='create_schemas',
         snowflake_conn_id='snowflake_bootstrap',
         sql='init_schemas.sql',
-        statement_count=6,
+        statement_count=7,
     )
 
     # -------------------------------------------------------------------

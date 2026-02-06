@@ -1,8 +1,8 @@
-name: 'ai_factory'
+name: 'fraudlens'
 version: '1.0.0'
 config-version: 2
 
-profile: 'ai_factory'
+profile: 'fraudlens'
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]
@@ -16,10 +16,13 @@ clean-targets:
   - "dbt_packages"
 
 models:
-  ai_factory:
+  fraudlens:
     staging:
       +schema: STAGING
       +materialized: view
     silver:
       +schema: SILVER
+      +materialized: table
+    gold:
+      +schema: GOLD
       +materialized: table
