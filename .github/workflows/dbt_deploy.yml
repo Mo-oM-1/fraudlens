@@ -10,7 +10,6 @@ on:
 env:
   SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
   SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
   SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
   SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
 
@@ -33,6 +32,12 @@ jobs:
         run: |
           pip install dbt-snowflake==1.7.0
 
+      - name: Setup Snowflake private key
+        run: |
+          mkdir -p ~/.snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > ~/.snowflake/rsa_key.p8
+          chmod 600 ~/.snowflake/rsa_key.p8
+
       - name: Create profiles.yml for CI
         run: |
           mkdir -p ~/.dbt
@@ -44,7 +49,7 @@ jobs:
                 type: snowflake
                 account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
                 user: ${{ secrets.SNOWFLAKE_USER }}
-                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                private_key_path: ~/.snowflake/rsa_key.p8
                 role: ACCOUNTADMIN
                 database: ${{ secrets.SNOWFLAKE_DATABASE }}
                 warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
@@ -80,4 +85,4 @@ jobs:
         working-directory: ./dbt
         run: |
           dbt docs generate --profiles-dir ~/.dbt
-          echo "📚 dbt docs generated successfully"
+          echo "dbt docs generated successfully"
