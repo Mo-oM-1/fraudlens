@@ -8,7 +8,6 @@ on:
       - '.github/workflows/dbt_deploy.yml'
 
 env:
-  DBT_PROFILES_DIR: ./dbt
   SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
   SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
   SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
