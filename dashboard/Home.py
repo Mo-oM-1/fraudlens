@@ -1,12 +1,12 @@
 """
-Healthcare Fraud Detection Dashboard
+FraudLens - Healthcare Fraud Detection Dashboard
 Main entry point
 """
 import streamlit as st
 
 st.set_page_config(
-    page_title="Healthcare Fraud Detection",
-    page_icon="🏥",
+    page_title="FraudLens - Healthcare Fraud Detection",
+    page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -45,8 +45,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown('<h1 class="main-header">🏥 Healthcare Fraud Detection</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">AI-Powered Analytics for Healthcare Compliance</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">🔍 FraudLens</h1>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">AI-Powered Healthcare Fraud Detection & Compliance Analytics</p>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -54,7 +54,7 @@ st.divider()
 st.markdown("""
 ### 🎯 Project Overview
 
-This dashboard provides **real-time fraud detection and risk assessment** for healthcare providers
+**FraudLens** provides **real-time fraud detection and risk assessment** for healthcare providers
 using data from **10+ federal sources**:
 
 **CMS Provider Data:**
@@ -132,7 +132,7 @@ with col1:
     - Raw data ingestion
     - Airflow orchestration
     - S3 → Snowflake pipeline
-    - 4 source datasets
+    - 10+ source datasets
     """)
 
 with col2:
@@ -177,7 +177,7 @@ with col4:
 st.divider()
 st.markdown("""
 <div style="text-align: center; color: #666; font-size: 0.9rem;">
-    <p>Built with ❤️ using Python, dbt, Snowflake & Streamlit</p>
-    <p>Data Engineering Portfolio Project | 2024</p>
+    <p>Built with Python, dbt, Snowflake & Streamlit</p>
+    <p><strong>FraudLens</strong> - Data Engineering Portfolio Project | 2026</p>
 </div>
 """, unsafe_allow_html=True)

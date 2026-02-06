@@ -1,4 +1,4 @@
-# 🏥 Healthcare Fraud Detection Dashboard
+# 🔍 FraudLens Dashboard
 
 Interactive Streamlit dashboard for healthcare fraud detection and provider risk assessment.
 
@@ -59,6 +59,7 @@ dashboard/
 - **Open Payments**: Pharma payment disclosures
 - **Medicare Part D**: Prescription patterns
 - **OIG LEIE**: Exclusion list
+- **CMS Provider Data**: Hospital spending, facilities
 
 ## 🔐 Security
 

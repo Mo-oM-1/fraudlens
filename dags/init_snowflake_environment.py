@@ -28,7 +28,7 @@ with DAG(
     # -------------------------------------------------------------------
     # TASK 1 : Create warehouse
     # Utilise snowflake_bootstrap (COMPUTE_WH) pour éviter la dépendance
-    # circulaire - le warehouse AI_FACTORY_WH n'existe pas encore
+    # circulaire - le warehouse FRAUDLENS_WH n'existe pas encore
     # -------------------------------------------------------------------
     create_warehouse = SnowflakeSqlApiOperator(
         task_id='create_warehouse',

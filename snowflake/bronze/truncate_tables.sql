@@ -4,7 +4,7 @@
 -- Note: Open Payments tables sont recréées avec CREATE OR REPLACE
 -- =============================================================================
 
-USE DATABASE AI_FACTORY_DB;
+USE DATABASE FRAUDLENS_DB;
 USE SCHEMA BRONZE;
 
 TRUNCATE TABLE IF EXISTS LEIE;

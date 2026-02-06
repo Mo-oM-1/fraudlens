@@ -1,6 +1,6 @@
-# Medical Fraud Detection Data Pipeline
+# 🔍 FraudLens - Healthcare Fraud Detection Platform
 
-Pipeline de donnees pour la detection de fraudes medicales. Ingere et centralise plusieurs datasets publics CMS/OIG pour detecter des anomalies dans les paiements Medicare/Medicaid.
+Pipeline de donnees complet pour la detection de fraudes dans le secteur de la sante. Ingere et centralise 10+ datasets publics CMS/OIG pour detecter des anomalies dans les paiements Medicare/Medicaid.
 
 ---
 
@@ -10,19 +10,28 @@ Pipeline de donnees pour la detection de fraudes medicales. Ingere et centralise
 master_dag (Orchestrateur)
     |
     +-- init_snowflake_environment (Bootstrap)
-    |       +-- create_warehouse (AI_FACTORY_WH)
-    |       +-- create_schemas (RAW_DATA, BRONZE, SILVER, GOLD)
+    |       +-- create_warehouse (FRAUDLENS_WH)
+    |       +-- create_schemas (RAW_DATA, BRONZE, STAGING, SILVER, GOLD)
     |       +-- create_s3_stage
     |
-    +-- [En parallele]
-            +-- leie_download
-            +-- medicare_hospital_spending_download
-            +-- open_payments_download
-            +-- provider_information_download
-            +-- longterm_care_hospital_download
-            +-- hospice_download
-            +-- home_health_care_download
-            +-- medicare_part_d_prescribers_download
+    +-- [Data Downloads - En parallele]
+    |       +-- leie_download
+    |       +-- medicare_hospital_spending_download
+    |       +-- open_payments_download
+    |       +-- provider_information_download
+    |       +-- longterm_care_hospital_download
+    |       +-- hospice_download
+    |       +-- home_health_care_download
+    |       +-- medicare_part_d_prescribers_download
+    |
+    +-- load_bronze_tables (COPY INTO Snowflake)
+    |
+    +-- dbt_transformations
+            +-- dbt run --select staging
+            +-- dbt run --select silver
+            +-- dbt run --select gold
+            +-- dbt test
+            +-- dbt docs generate
 ```
 
 ---
@@ -30,126 +39,98 @@ master_dag (Orchestrateur)
 ## Sources de Donnees
 
 ### 1. LEIE (Excluded Individuals / Entities)
-- **URL :** https://oig.hhs.gov/exclusions/downloadables/UPDATED.csv
-- **Contenu :** Liste des individus et entites exclus du programme Medicare/Medicaid (nom, type, raison de l'exclusion, dates).
-- **Usage Fraude :** Detecter paiements vers des prestataires deja exclus pour fraude.
+- **Source :** OIG (Office of Inspector General)
+- **Contenu :** Liste des individus et entites exclus du programme Medicare/Medicaid
+- **Usage Fraude :** Detecter paiements vers des prestataires deja exclus
 - **Cle :** NPI, Nom
 
 ### 2. Medicare Hospital Spending by Claim
-- **URL :** https://data.cms.gov/provider-data/sites/default/files/resources/.../Medicare_Hospital_Spending_by_Claim.csv
-- **Contenu :** Paiements Medicare par hopital et type de prestation (montant, nombre de patients).
-- **Usage Fraude :** Identifier depenses anormales ou patterns suspects par etablissement.
+- **Source :** CMS Provider Data
+- **Contenu :** Paiements Medicare par hopital et type de prestation
+- **Usage Fraude :** Identifier depenses anormales par etablissement
 - **Cle :** Facility ID
 
-### 3. Open Payments (Batch 2024)
-- **URL :** https://download.cms.gov/openpayments/PGYR2024_P06302025_06162025.zip
-- **Contenu :** Paiements des laboratoires pharmaceutiques aux medecins (cadeaux, consulting, recherche).
-- **Usage Fraude :** Detecter conflits d'interets, kickbacks, patterns de corruption.
+### 3. Open Payments (2024)
+- **Source :** CMS Open Payments
+- **Contenu :** Paiements des laboratoires pharmaceutiques aux medecins
+- **Usage Fraude :** Detecter conflits d'interets, kickbacks
 - **Cle :** NPI
 
 ### 4. Provider Information (Nursing Home)
-- **URL :** https://data.cms.gov/provider-data/.../NH_ProviderInfo_Dec2025.csv
-- **Contenu :** Informations detaillees sur les prestataires (NPI, nom, adresse, type, specialite).
-- **Usage Fraude :** Enrichissement et validation des etablissements.
+- **Source :** CMS Provider Data
+- **Contenu :** Informations detaillees sur les prestataires
+- **Usage Fraude :** Enrichissement et validation
 - **Cle :** NPI, Provider ID
 
 ### 5. Long-Term Care Hospital
-- **URL :** https://data.cms.gov/provider-data/.../Long-Term_Care_Hospital-General_Information_Dec2025.csv
-- **Contenu :** Details des hopitaux de soins prolonges (NPI, adresse, type de soins).
-- **Usage Fraude :** Secteur a risque - enrichir la localisation pour l'analyse.
+- **Source :** CMS Provider Data
+- **Contenu :** Details des hopitaux de soins prolonges
+- **Usage Fraude :** Secteur a risque
 - **Cle :** Provider ID
 
 ### 6. Hospice
-- **URL :** https://data.cms.gov/provider-data/.../Hospice_General-Information_Nov2025.csv
-- **Contenu :** Informations sur les etablissements de soins palliatifs.
-- **Usage Fraude :** Secteur a haut risque de fraude Medicare.
+- **Source :** CMS Provider Data
+- **Contenu :** Informations sur les etablissements de soins palliatifs
+- **Usage Fraude :** Secteur a haut risque de fraude Medicare
 - **Cle :** Provider ID
 
 ### 7. Home Health Care
-- **URL :** https://data.cms.gov/provider-data/.../HH_Zip_Jan2026.csv
-- **Contenu :** Prestataires de soins a domicile avec ZIP Codes.
-- **Usage Fraude :** Analyses geospatiales et detection de clusters anormaux.
+- **Source :** CMS Provider Data
+- **Contenu :** Prestataires de soins a domicile avec ZIP Codes
+- **Usage Fraude :** Analyses geospatiales
 - **Cle :** ZIP Code
 
-### 8. Medicare Part D Prescribers (NEW)
-- **URL :** https://data.cms.gov/sites/default/files/.../MUP_DPR_RY24_P04_V10_DY22_NPI.csv
-- **Contenu :** Prescriptions par medecin (NPI, specialite, nb prescriptions, couts, beneficiaires).
-- **Usage Fraude :** Detecter les sur-prescripteurs, pill mills, anomalies de prescription.
+### 8. Medicare Part D Prescribers
+- **Source :** CMS Medicare Part D
+- **Contenu :** Prescriptions par medecin
+- **Usage Fraude :** Detecter les sur-prescripteurs, pill mills
 - **Cle :** NPI
 
-### 9. NPPES Provider Data (Snowflake Marketplace)
-- **Source :** `AFFINE_NPPES_PROVIDER_DATA` (Snowflake Marketplace)
-- **Contenu :** Referentiel complet de tous les NPI aux Etats-Unis.
-- **Usage Fraude :** Table de reference maitre pour les jointures.
-- **Cle :** NPI (cle primaire)
+### 9. NPPES Provider Data
+- **Source :** Snowflake Marketplace (Affine)
+- **Contenu :** Referentiel complet de tous les NPI aux Etats-Unis
+- **Usage Fraude :** Table de reference maitre pour les jointures
+- **Cle :** NPI
 
 ---
 
-## Connexions Snowflake
-
-| Connexion | Warehouse | Usage |
-|-----------|-----------|-------|
-| `snowflake_bootstrap` | COMPUTE_WH | Creation infra (warehouse, DB, schemas) |
-| `snowflake_default` | AI_FACTORY_WH | Operations metier (DAGs de donnees) |
-
----
-
-## Schema de Jointure
-
-```
-                    NPPES (Snowflake Marketplace)
-                              |
-                             NPI
-                              |
-        +---------------------+---------------------+
-        |                     |                     |
-        v                     v                     v
-      LEIE              Open Payments         Part D Prescribers
-   (fraudeurs)         (paiements)            (prescriptions)
-        |                     |                     |
-        +----------+----------+----------+---------+
-                   |
-                   v
-            Provider Info / Hospice / LTCH / Home Health
-```
-
----
-
-## Structure S3
-
-```
-s3://ai-factory-bckt/
-    +-- raw/                          # CSV bruts (versiones + LATEST)
-    |   +-- leie/
-    |   +-- medicare_hospital_spending/
-    |   +-- open_payments/
-    |   +-- provider_information/
-    |   +-- longterm_care_hospital/
-    |   +-- hospice/
-    |   +-- home_health_care/
-    |   +-- medicare_part_d_prescribers/
-    |
-    +-- bronze/                       # Parquet (optimise pour Snowflake)
-        +-- leie/
-        +-- medicare_hospital_spending/
-        +-- open_payments/
-        +-- provider_information/
-        +-- longterm_care_hospital/
-        +-- hospice/
-        +-- home_health_care/
-        +-- medicare_part_d_prescribers/
-```
-
----
-
-## Schema Snowflake (Medallion Architecture)
+## Medallion Architecture
 
 | Schema | Description |
 |--------|-------------|
-| `RAW_DATA` | Donnees brutes depuis S3 Stage |
-| `BRONZE` | Donnees ingeres, typage initial |
+| `BRONZE` | Donnees brutes depuis S3 Stage |
+| `STAGING` | Vues dbt sur Bronze |
 | `SILVER` | Donnees nettoyees, jointes, enrichies |
 | `GOLD` | Donnees prets pour l'analyse et BI |
+
+### Gold Layer Models
+
+| Model | Description |
+|-------|-------------|
+| `provider_360` | Vue 360 complete de chaque provider |
+| `payments_summary` | Agregations des paiements pharma |
+| `prescriptions_summary` | Agregations des prescriptions |
+| `fraud_risk_score` | Score de risque fraude (0-100) |
+| `high_risk_alerts` | Alertes actionnables |
+
+---
+
+## Dashboard Streamlit
+
+Dashboard interactif pour la visualisation des donnees de fraude :
+
+- **Overview** : KPIs executifs, distribution des risques
+- **Fraud Alerts** : Liste des alertes avec filtrage et export
+- **Provider 360** : Recherche et profil complet de provider
+- **Analytics** : Cartes geographiques, analyses de tendances
+
+### Lancer le Dashboard
+
+```bash
+cd dashboard
+source venv/bin/activate
+streamlit run Home.py
+```
 
 ---
 
@@ -157,13 +138,13 @@ s3://ai-factory-bckt/
 
 | Composant | Technologie |
 |-----------|-------------|
-| Orchestration | Apache Airflow 3.x (CeleryExecutor) |
+| Orchestration | Apache Airflow 3.x |
 | Data Warehouse | Snowflake |
 | Data Lake | Amazon S3 |
+| Transformations | dbt Core |
+| Dashboard | Streamlit + Plotly |
 | Conteneurisation | Docker + Docker Compose |
 | Traitement | Python 3.12, Pandas, PyArrow |
-| Base metadonnees | PostgreSQL 16 |
-| Message Broker | Redis 7.2 |
 
 ---
 
@@ -176,12 +157,7 @@ docker-compose up -d
 
 ### Lancer le pipeline complet
 ```bash
-docker exec ai_factory-airflow-worker-1 airflow dags trigger master_dag
-```
-
-### Lancer un DAG individuel
-```bash
-docker exec ai_factory-airflow-worker-1 airflow dags trigger leie_download
+docker exec fraudlens-airflow-worker-1 airflow dags trigger master_dag
 ```
 
 ### Acceder a l'interface Airflow
@@ -191,14 +167,5 @@ docker exec ai_factory-airflow-worker-1 airflow dags trigger leie_download
 
 ---
 
-## Prochaines Etapes
-
-1. **Charger les donnees dans Snowflake** (COPY depuis S3 Stage)
-2. **Creer la couche Silver** (jointures via NPI, nettoyage)
-3. **Developper les regles de detection** (anomalies, croisements LEIE)
-4. **Creer la couche Gold** (features pour ML, dashboards)
-
----
-
 ## Auteur
-MooM - AI Factory Project
+MooM - FraudLens Project | 2026

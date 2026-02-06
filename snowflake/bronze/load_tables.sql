@@ -3,7 +3,7 @@
 -- Charge les fichiers Parquet depuis S3 vers les tables Bronze
 -- =============================================================================
 
-USE DATABASE AI_FACTORY_DB;
+USE DATABASE FRAUDLENS_DB;
 USE SCHEMA BRONZE;
 
 -- -----------------------------------------------------------------------------

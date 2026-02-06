@@ -3,7 +3,7 @@
 -- Tables pour charger les fichiers Parquet depuis S3
 -- =============================================================================
 
-USE DATABASE AI_FACTORY_DB;
+USE DATABASE FRAUDLENS_DB;
 USE SCHEMA BRONZE;
 
 -- -----------------------------------------------------------------------------

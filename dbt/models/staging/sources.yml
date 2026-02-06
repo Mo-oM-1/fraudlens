@@ -2,7 +2,7 @@ version: 2
 
 sources:
   - name: bronze
-    database: AI_FACTORY_DB
+    database: FRAUDLENS_DB
     schema: BRONZE
     description: "Raw data loaded from CMS/HHS public datasets into Snowflake Bronze layer"
 

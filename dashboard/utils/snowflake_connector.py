@@ -28,7 +28,7 @@ def get_snowflake_connection():
             user=os.environ.get('SNOWFLAKE_USER'),
             password=os.environ.get('SNOWFLAKE_PASSWORD'),
             warehouse=os.environ.get('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH'),
-            database=os.environ.get('SNOWFLAKE_DATABASE', 'AI_FACTORY_DB'),
+            database=os.environ.get('SNOWFLAKE_DATABASE', 'FRAUDLENS_DB'),
             schema=os.environ.get('SNOWFLAKE_SCHEMA', 'GOLD')
         )
 
@@ -58,7 +58,7 @@ def get_kpis():
         COUNT(CASE WHEN HAS_PRESCRIPTIONS THEN 1 END) as PROVIDERS_WITH_PRESCRIPTIONS,
         COUNT(CASE WHEN IS_EXCLUDED THEN 1 END) as EXCLUDED_PROVIDERS,
         COUNT(CASE WHEN IS_EXCLUDED AND (HAS_PHARMA_PAYMENTS OR HAS_PRESCRIPTIONS) THEN 1 END) as EXCLUDED_WITH_ACTIVITY
-    FROM AI_FACTORY_DB.GOLD.PROVIDER_360
+    FROM FRAUDLENS_DB.GOLD.PROVIDER_360
     """
     return run_query(query)
 
@@ -71,7 +71,7 @@ def get_risk_distribution():
         COUNT(*) as COUNT,
         ROUND(AVG(FRAUD_RISK_SCORE), 1) as AVG_SCORE,
         ROUND(SUM(TOTAL_FINANCIAL_EXPOSURE), 0) as TOTAL_EXPOSURE
-    FROM AI_FACTORY_DB.GOLD.FRAUD_RISK_SCORE
+    FROM FRAUDLENS_DB.GOLD.FRAUD_RISK_SCORE
     WHERE RISK_TIER IS NOT NULL
     GROUP BY RISK_TIER
     ORDER BY AVG_SCORE DESC
@@ -87,7 +87,7 @@ def get_alerts_summary():
         RISK_TIER,
         COUNT(*) as NB_ALERTS,
         ROUND(SUM(FINANCIAL_EXPOSURE), 0) as TOTAL_EXPOSURE
-    FROM AI_FACTORY_DB.GOLD.HIGH_RISK_ALERTS
+    FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
     GROUP BY ALERT_TYPE, RISK_TIER
     ORDER BY NB_ALERTS DESC
     """
@@ -110,7 +110,7 @@ def get_alerts_list(alert_type: str = None, limit: int = 100):
         ALERT_DESCRIPTION,
         FINANCIAL_EXPOSURE,
         PRIORITY_RANK
-    FROM AI_FACTORY_DB.GOLD.HIGH_RISK_ALERTS
+    FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
     {where_clause}
     ORDER BY PRIORITY_RANK, RISK_SCORE DESC
     LIMIT {limit}
@@ -122,7 +122,7 @@ def get_provider_details(npi: str):
     """Get full provider details from Provider 360."""
     query = f"""
     SELECT *
-    FROM AI_FACTORY_DB.GOLD.PROVIDER_360
+    FROM FRAUDLENS_DB.GOLD.PROVIDER_360
     WHERE NPI = '{npi}'
     """
     return run_query(query)
@@ -132,7 +132,7 @@ def get_provider_alerts(npi: str):
     """Get alerts for a specific provider."""
     query = f"""
     SELECT *
-    FROM AI_FACTORY_DB.GOLD.HIGH_RISK_ALERTS
+    FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
     WHERE NPI = '{npi}'
     ORDER BY PRIORITY_RANK
     """
@@ -150,7 +150,7 @@ def search_providers(search_term: str, limit: int = 50):
         STATE,
         IS_EXCLUDED,
         TOTAL_FINANCIAL_EXPOSURE
-    FROM AI_FACTORY_DB.GOLD.PROVIDER_360
+    FROM FRAUDLENS_DB.GOLD.PROVIDER_360
     WHERE NPI LIKE '%{search_term}%'
        OR UPPER(FULL_NAME) LIKE '%{search_term.upper()}%'
        OR UPPER(ORGANIZATION_NAME) LIKE '%{search_term.upper()}%'
@@ -168,8 +168,8 @@ def get_payments_by_state():
         COUNT(DISTINCT p.NPI) as PROVIDER_COUNT,
         SUM(ps.TOTAL_PAYMENT_AMOUNT) as TOTAL_PAYMENTS,
         AVG(ps.TOTAL_PAYMENT_AMOUNT) as AVG_PAYMENT
-    FROM AI_FACTORY_DB.GOLD.PAYMENTS_SUMMARY ps
-    JOIN AI_FACTORY_DB.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
+    FROM FRAUDLENS_DB.GOLD.PAYMENTS_SUMMARY ps
+    JOIN FRAUDLENS_DB.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
     WHERE p.STATE IS NOT NULL
     GROUP BY p.STATE
     ORDER BY TOTAL_PAYMENTS DESC
@@ -188,8 +188,8 @@ def get_top_recipients():
         ps.TOTAL_PAYMENT_AMOUNT,
         ps.RECIPIENT_TIER,
         p.IS_EXCLUDED
-    FROM AI_FACTORY_DB.GOLD.PAYMENTS_SUMMARY ps
-    JOIN AI_FACTORY_DB.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
+    FROM FRAUDLENS_DB.GOLD.PAYMENTS_SUMMARY ps
+    JOIN FRAUDLENS_DB.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
     ORDER BY ps.TOTAL_PAYMENT_AMOUNT DESC
     LIMIT 100
     """
@@ -209,7 +209,7 @@ def get_excluded_with_activity():
         p.TOTAL_PAYMENT_AMOUNT,
         p.TOTAL_PRESCRIPTION_COST,
         p.TOTAL_FINANCIAL_EXPOSURE
-    FROM AI_FACTORY_DB.GOLD.PROVIDER_360 p
+    FROM FRAUDLENS_DB.GOLD.PROVIDER_360 p
     WHERE p.IS_EXCLUDED = TRUE
       AND (p.HAS_PHARMA_PAYMENTS = TRUE OR p.HAS_PRESCRIPTIONS = TRUE)
     ORDER BY p.TOTAL_FINANCIAL_EXPOSURE DESC

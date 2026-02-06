@@ -211,7 +211,7 @@ if search_term and (search_button or len(search_term) >= 3):
                     from utils import run_query
                     score_query = f"""
                     SELECT FRAUD_RISK_SCORE, RISK_TIER
-                    FROM AI_FACTORY_DB.GOLD.FRAUD_RISK_SCORE
+                    FROM FRAUDLENS_DB.GOLD.FRAUD_RISK_SCORE
                     WHERE NPI = '{selected_npi}'
                     """
                     score_data = run_query(score_query)

@@ -116,7 +116,7 @@ with tab2:
                 # Recipient tier distribution
                 tier_query = """
                 SELECT RECIPIENT_TIER, COUNT(*) as COUNT, SUM(TOTAL_PAYMENT_AMOUNT) as TOTAL
-                FROM AI_FACTORY_DB.GOLD.PAYMENTS_SUMMARY
+                FROM FRAUDLENS_DB.GOLD.PAYMENTS_SUMMARY
                 WHERE RECIPIENT_TIER IS NOT NULL
                 GROUP BY RECIPIENT_TIER
                 """
@@ -191,7 +191,7 @@ with tab3:
             PRESCRIBER_VOLUME_TIER,
             COUNT(*) as COUNT,
             SUM(TOTAL_COST) as TOTAL_COST
-        FROM AI_FACTORY_DB.GOLD.PRESCRIPTIONS_SUMMARY
+        FROM FRAUDLENS_DB.GOLD.PRESCRIPTIONS_SUMMARY
         WHERE PRESCRIBER_VOLUME_TIER IS NOT NULL
         GROUP BY PRESCRIBER_VOLUME_TIER
         """
@@ -224,7 +224,7 @@ with tab3:
                      ELSE 'Low Brand (<50%)'
                 END as BRAND_CATEGORY,
                 COUNT(*) as COUNT
-            FROM AI_FACTORY_DB.GOLD.PRESCRIPTIONS_SUMMARY
+            FROM FRAUDLENS_DB.GOLD.PRESCRIPTIONS_SUMMARY
             GROUP BY BRAND_CATEGORY
             """
             brand_data = run_query(brand_query)
@@ -256,7 +256,7 @@ with tab3:
             TOTAL_COST,
             PCT_BRAND_CLAIMS,
             IS_EXCLUDED_PROVIDER
-        FROM AI_FACTORY_DB.GOLD.PRESCRIPTIONS_SUMMARY
+        FROM FRAUDLENS_DB.GOLD.PRESCRIPTIONS_SUMMARY
         ORDER BY TOTAL_COST DESC
         LIMIT 25
         """
@@ -347,7 +347,7 @@ with tab4:
 
             score_query = """
             SELECT FRAUD_RISK_SCORE
-            FROM AI_FACTORY_DB.GOLD.FRAUD_RISK_SCORE
+            FROM FRAUDLENS_DB.GOLD.FRAUD_RISK_SCORE
             WHERE FRAUD_RISK_SCORE > 0
             LIMIT 10000
             """
