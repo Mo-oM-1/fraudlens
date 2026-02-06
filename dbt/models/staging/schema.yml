@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: stg_leie
+    description: "Staging view for LEIE (List of Excluded Individuals/Entities)"
+
+  - name: stg_medicare_hospital_spending
+    description: "Staging view for Medicare Hospital Spending"
+
+  - name: stg_provider_information
+    description: "Staging view for Provider Information"
+
+  - name: stg_longterm_care_hospital
+    description: "Staging view for Long-Term Care Hospital"
+
+  - name: stg_hospice
+    description: "Staging view for Hospice Providers"
+
+  - name: stg_home_health_care
+    description: "Staging view for Home Health Care"
+
+  - name: stg_medicare_part_d_prescribers
+    description: "Staging view for Medicare Part D Prescribers"
+
+  - name: stg_open_payments_general
+    description: "Staging view for Open Payments General"
+
+  - name: stg_open_payments_research
+    description: "Staging view for Open Payments Research"
+
+  - name: stg_open_payments_ownership
+    description: "Staging view for Open Payments Ownership"

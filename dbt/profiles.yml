@@ -1,0 +1,13 @@
+ai_factory:
+  target: prod
+  outputs:
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: /opt/airflow/snowflake/keys/rsa_key.p8
+      role: ACCOUNTADMIN
+      database: AI_FACTORY_DB
+      warehouse: AI_FACTORY_WH
+      schema: SILVER
+      threads: 4

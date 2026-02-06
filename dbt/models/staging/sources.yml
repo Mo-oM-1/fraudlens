@@ -1,0 +1,418 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: AI_FACTORY_DB
+    schema: BRONZE
+    description: "Raw data loaded from CMS/HHS public datasets into Snowflake Bronze layer"
+
+    tables:
+      - name: LEIE
+        description: "List of Excluded Individuals/Entities - Healthcare providers excluded from Medicare/Medicaid"
+        columns:
+          - name: LASTNAME
+            description: "Last name of excluded individual"
+          - name: FIRSTNAME
+            description: "First name of excluded individual"
+          - name: MIDNAME
+            description: "Middle name of excluded individual"
+          - name: BUSNAME
+            description: "Business name (for entities)"
+          - name: GENERAL
+            description: "General classification code"
+          - name: SPECIALTY
+            description: "Medical specialty of the provider"
+          - name: UPIN
+            description: "Unique Physician Identification Number (legacy)"
+          - name: NPI
+            description: "National Provider Identifier"
+          - name: DOB
+            description: "Date of birth"
+          - name: ADDRESS
+            description: "Street address"
+          - name: CITY
+            description: "City"
+          - name: STATE
+            description: "State code"
+          - name: ZIP
+            description: "ZIP code"
+          - name: EXCLTYPE
+            description: "Exclusion type code indicating reason for exclusion"
+          - name: EXCLDATE
+            description: "Date of exclusion"
+          - name: REINDATE
+            description: "Date of reinstatement (if applicable)"
+          - name: WAIVERDATE
+            description: "Date of waiver (if applicable)"
+          - name: WVRSTATE
+            description: "State that granted waiver"
+          - name: _LOAD_TIMESTAMP
+            description: "Timestamp when record was loaded into Bronze"
+          - name: _SOURCE_FILE
+            description: "Source file name"
+
+      - name: MEDICARE_HOSPITAL_SPENDING
+        description: "Medicare spending per beneficiary by hospital and claim type"
+        columns:
+          - name: FACILITY_ID
+            description: "CMS Certification Number (CCN) of the hospital"
+          - name: FACILITY_NAME
+            description: "Name of the hospital"
+          - name: ADDRESS
+            description: "Street address of the hospital"
+          - name: CITY
+            description: "City where hospital is located"
+          - name: STATE
+            description: "State code"
+          - name: ZIP_CODE
+            description: "ZIP code"
+          - name: COUNTY_NAME
+            description: "County name"
+          - name: PHONE_NUMBER
+            description: "Hospital phone number"
+          - name: CLAIM_TYPE
+            description: "Type of Medicare claim (e.g., Inpatient, Outpatient, SNF)"
+          - name: PERIOD
+            description: "Time period relative to hospital stay"
+          - name: AVG_SPENDING_PER_EPISODE_HOSPITAL
+            description: "Average spending per episode at this hospital"
+          - name: AVG_SPENDING_PER_EPISODE_STATE
+            description: "Average spending per episode for the state"
+          - name: AVG_SPENDING_PER_EPISODE_NATION
+            description: "Average spending per episode nationally"
+          - name: PERCENT_OF_SPENDING_HOSPITAL
+            description: "Percent of total spending at this hospital"
+          - name: PERCENT_OF_SPENDING_STATE
+            description: "Percent of total spending for the state"
+          - name: PERCENT_OF_SPENDING_NATION
+            description: "Percent of total spending nationally"
+          - name: START_DATE
+            description: "Start date of measurement period"
+          - name: END_DATE
+            description: "End date of measurement period"
+          - name: _LOAD_TIMESTAMP
+            description: "Timestamp when record was loaded into Bronze"
+          - name: _SOURCE_FILE
+            description: "Source file name"
+
+      - name: PROVIDER_INFORMATION
+        description: "Nursing home provider information and quality ratings"
+        columns:
+          - name: FEDERAL_PROVIDER_NUMBER
+            description: "Federal provider identification number"
+          - name: PROVIDER_NAME
+            description: "Name of the nursing home"
+          - name: PROVIDER_ADDRESS
+            description: "Street address"
+          - name: PROVIDER_CITY
+            description: "City"
+          - name: PROVIDER_STATE
+            description: "State code"
+          - name: PROVIDER_ZIP_CODE
+            description: "ZIP code"
+          - name: PROVIDER_PHONE_NUMBER
+            description: "Phone number"
+          - name: PROVIDER_SSA_COUNTY_CODE
+            description: "SSA county code"
+          - name: PROVIDER_COUNTY_NAME
+            description: "County name"
+          - name: OWNERSHIP_TYPE
+            description: "Type of ownership (For-profit, Non-profit, Government)"
+          - name: NUMBER_OF_CERTIFIED_BEDS
+            description: "Total number of certified beds"
+          - name: NUMBER_OF_RESIDENTS
+            description: "Current number of residents"
+          - name: AVERAGE_NUMBER_OF_RESIDENTS_PER_DAY
+            description: "Average daily census"
+          - name: PROVIDER_TYPE
+            description: "Type of provider"
+          - name: PROVIDER_RESIDES_IN_HOSPITAL
+            description: "Whether provider is hospital-based"
+          - name: LEGAL_BUSINESS_NAME
+            description: "Legal business name"
+          - name: DATE_FIRST_APPROVED
+            description: "Date first approved by CMS"
+          - name: CONTINUING_CARE_RETIREMENT_COMMUNITY
+            description: "Whether part of a CCRC"
+          - name: SPECIAL_FOCUS_FACILITY
+            description: "Special Focus Facility status"
+          - name: OVERALL_RATING
+            description: "Overall quality rating (1-5 stars)"
+          - name: HEALTH_INSPECTION_RATING
+            description: "Health inspection rating (1-5 stars)"
+          - name: STAFFING_RATING
+            description: "Staffing rating (1-5 stars)"
+          - name: QM_RATING
+            description: "Quality measures rating (1-5 stars)"
+          - name: LOCATION
+            description: "Geographic coordinates"
+          - name: PROCESSING_DATE
+            description: "Date data was processed"
+          - name: _LOAD_TIMESTAMP
+            description: "Timestamp when record was loaded into Bronze"
+          - name: _SOURCE_FILE
+            description: "Source file name"
+
+      - name: LONGTERM_CARE_HOSPITAL
+        description: "Long-Term Care Hospital quality measures and facility information"
+        columns:
+          - name: CMS_CERTIFICATION_NUMBER
+            description: "CMS Certification Number (CCN)"
+          - name: FACILITY_NAME
+            description: "Name of the LTCH"
+          - name: ADDRESS
+            description: "Street address"
+          - name: CITY
+            description: "City"
+          - name: STATE
+            description: "State code"
+          - name: ZIP_CODE
+            description: "ZIP code"
+          - name: COUNTY_NAME
+            description: "County name"
+          - name: PHONE_NUMBER
+            description: "Phone number"
+          - name: CMS_REGION
+            description: "CMS regional office"
+          - name: MEASURE_CODE
+            description: "Quality measure code"
+          - name: SCORE
+            description: "Quality measure score"
+          - name: FOOTNOTE
+            description: "Footnote explaining data limitations"
+          - name: START_DATE
+            description: "Start date of measurement period"
+          - name: END_DATE
+            description: "End date of measurement period"
+          - name: _LOAD_TIMESTAMP
+            description: "Timestamp when record was loaded into Bronze"
+          - name: _SOURCE_FILE
+            description: "Source file name"
+
+      - name: HOSPICE
+        description: "Hospice provider information and certification data"
+        columns:
+          - name: CMS_CERTIFICATION_NUMBER
+            description: "CMS Certification Number (CCN)"
+          - name: FACILITY_NAME
+            description: "Name of the hospice"
+          - name: ADDRESS_LINE_1
+            description: "Street address line 1"
+          - name: ADDRESS_LINE_2
+            description: "Street address line 2"
+          - name: CITY
+            description: "City"
+          - name: STATE
+            description: "State code"
+          - name: ZIP_CODE
+            description: "ZIP code"
+          - name: COUNTY_NAME
+            description: "County name"
+          - name: PHONE_NUMBER
+            description: "Phone number"
+          - name: CMS_REGION
+            description: "CMS regional office"
+          - name: OWNERSHIP_TYPE
+            description: "Type of ownership"
+          - name: CERTIFICATION_DATE
+            description: "Date of CMS certification"
+          - name: _LOAD_TIMESTAMP
+            description: "Timestamp when record was loaded into Bronze"
+          - name: _SOURCE_FILE
+            description: "Source file name"
+
+      - name: HOME_HEALTH_CARE
+        description: "Home Health Care agency information and services offered"
+        columns:
+          - name: CMS_CERTIFICATION_NUMBER
+            description: "CMS Certification Number (CCN)"
+          - name: PROVIDER_NAME
+            description: "Name of the home health agency"
+          - name: ADDRESS
+            description: "Street address"
+          - name: CITY
+            description: "City"
+          - name: STATE
+            description: "State code"
+          - name: ZIP_CODE
+            description: "ZIP code"
+          - name: PHONE
+            description: "Phone number"
+          - name: TYPE_OF_OWNERSHIP
+            description: "Type of ownership"
+          - name: OFFERS_NURSING_CARE
+            description: "Whether agency offers nursing care services"
+          - name: OFFERS_PHYSICAL_THERAPY
+            description: "Whether agency offers physical therapy"
+          - name: OFFERS_OCCUPATIONAL_THERAPY
+            description: "Whether agency offers occupational therapy"
+          - name: OFFERS_SPEECH_PATHOLOGY
+            description: "Whether agency offers speech pathology services"
+          - name: OFFERS_MEDICAL_SOCIAL_SERVICES
+            description: "Whether agency offers medical social services"
+          - name: OFFERS_HOME_HEALTH_AIDE_SERVICES
+            description: "Whether agency offers home health aide services"
+          - name: DATE_CERTIFIED
+            description: "Date of CMS certification"
+          - name: _LOAD_TIMESTAMP
+            description: "Timestamp when record was loaded into Bronze"
+          - name: _SOURCE_FILE
+            description: "Source file name"
+
+      - name: MEDICARE_PART_D_PRESCRIBERS
+        description: "Medicare Part D prescription drug claims by prescriber and drug"
+        columns:
+          - name: PRSCRBR_NPI
+            description: "Prescriber National Provider Identifier"
+          - name: PRSCRBR_LAST_ORG_NAME
+            description: "Prescriber last name or organization name"
+          - name: PRSCRBR_FIRST_NAME
+            description: "Prescriber first name"
+          - name: PRSCRBR_CITY
+            description: "Prescriber city"
+          - name: PRSCRBR_STATE_ABRVTN
+            description: "Prescriber state abbreviation"
+          - name: PRSCRBR_STATE_FIPS
+            description: "Prescriber state FIPS code"
+          - name: PRSCRBR_TYPE
+            description: "Prescriber type/specialty"
+          - name: PRSCRBR_TYPE_SRC
+            description: "Source of prescriber type"
+          - name: BRND_NAME
+            description: "Brand name of the drug"
+          - name: GNRC_NAME
+            description: "Generic name of the drug"
+          - name: TOT_CLMS
+            description: "Total number of claims"
+          - name: TOT_30DAY_FILLS
+            description: "Total 30-day fill equivalents"
+          - name: TOT_DAY_SUPLY
+            description: "Total days supply"
+          - name: TOT_DRUG_CST
+            description: "Total drug cost"
+          - name: TOT_BENES
+            description: "Total number of beneficiaries"
+          - name: GE65_SPRSN_FLAG
+            description: "Suppression flag for 65+ data"
+          - name: GE65_TOT_CLMS
+            description: "Total claims for beneficiaries 65+"
+          - name: GE65_TOT_30DAY_FILLS
+            description: "Total 30-day fills for 65+"
+          - name: GE65_TOT_DAY_SUPLY
+            description: "Total days supply for 65+"
+          - name: GE65_TOT_DRUG_CST
+            description: "Total drug cost for 65+"
+          - name: GE65_BENE_SPRSN_FLAG
+            description: "Beneficiary suppression flag for 65+"
+          - name: GE65_TOT_BENES
+            description: "Total beneficiaries 65+"
+          - name: _LOAD_TIMESTAMP
+            description: "Timestamp when record was loaded into Bronze"
+          - name: _SOURCE_FILE
+            description: "Source file name"
+
+      - name: OPEN_PAYMENTS_GENERAL
+        description: "General payments from drug/device companies to physicians and teaching hospitals"
+        columns:
+          - name: Change_Type
+            description: "Type of change (NEW, CHANGED, etc.)"
+          - name: Covered_Recipient_Type
+            description: "Type of recipient (Physician, Teaching Hospital)"
+          - name: Teaching_Hospital_CCN
+            description: "Teaching hospital CMS Certification Number"
+          - name: Teaching_Hospital_ID
+            description: "Teaching hospital ID"
+          - name: Teaching_Hospital_Name
+            description: "Teaching hospital name"
+          - name: Covered_Recipient_Profile_ID
+            description: "Unique profile ID for the recipient"
+          - name: Covered_Recipient_NPI
+            description: "Recipient National Provider Identifier"
+          - name: Covered_Recipient_First_Name
+            description: "Recipient first name"
+          - name: Covered_Recipient_Last_Name
+            description: "Recipient last name"
+          - name: Recipient_City
+            description: "Recipient city"
+          - name: Recipient_State
+            description: "Recipient state"
+          - name: Recipient_Zip_Code
+            description: "Recipient ZIP code"
+          - name: Covered_Recipient_Specialty_1
+            description: "Primary specialty of the recipient"
+          - name: Applicable_Manufacturer_or_Applicable_GPO_Making_Payment_Name
+            description: "Name of the paying company"
+          - name: Total_Amount_of_Payment_USDollars
+            description: "Total payment amount in US dollars"
+          - name: Date_of_Payment
+            description: "Date when payment was made"
+          - name: Form_of_Payment_or_Transfer_of_Value
+            description: "Form of payment (Cash, In-kind, etc.)"
+          - name: Nature_of_Payment_or_Transfer_of_Value
+            description: "Nature/purpose of payment (Consulting, Food, Travel, etc.)"
+          - name: Record_ID
+            description: "Unique record identifier"
+          - name: Program_Year
+            description: "Program year of the payment"
+          - name: Payment_Publication_Date
+            description: "Date payment was published"
+
+      - name: OPEN_PAYMENTS_RESEARCH
+        description: "Research payments from drug/device companies to physicians for clinical trials"
+        columns:
+          - name: Change_Type
+            description: "Type of change (NEW, CHANGED, etc.)"
+          - name: Covered_Recipient_Type
+            description: "Type of recipient"
+          - name: Covered_Recipient_NPI
+            description: "Recipient National Provider Identifier"
+          - name: Covered_Recipient_First_Name
+            description: "Recipient first name"
+          - name: Covered_Recipient_Last_Name
+            description: "Recipient last name"
+          - name: Applicable_Manufacturer_or_Applicable_GPO_Making_Payment_Name
+            description: "Name of the paying company"
+          - name: Total_Amount_of_Payment_USDollars
+            description: "Total payment amount in US dollars"
+          - name: Date_of_Payment
+            description: "Date when payment was made"
+          - name: Name_of_Study
+            description: "Name of the research study"
+          - name: ClinicalTrials_Gov_Identifier
+            description: "ClinicalTrials.gov identifier (NCT number)"
+          - name: Record_ID
+            description: "Unique record identifier"
+          - name: Program_Year
+            description: "Program year of the payment"
+
+      - name: OPEN_PAYMENTS_OWNERSHIP
+        description: "Physician ownership and investment interests in drug/device companies"
+        columns:
+          - name: Change_Type
+            description: "Type of change (NEW, CHANGED, etc.)"
+          - name: Physician_Profile_ID
+            description: "Unique profile ID for the physician"
+          - name: Physician_NPI
+            description: "Physician National Provider Identifier"
+          - name: Physician_First_Name
+            description: "Physician first name"
+          - name: Physician_Last_Name
+            description: "Physician last name"
+          - name: Recipient_City
+            description: "Physician city"
+          - name: Recipient_State
+            description: "Physician state"
+          - name: Physician_Specialty
+            description: "Physician specialty"
+          - name: Applicable_Manufacturer_or_Applicable_GPO_Making_Payment_Name
+            description: "Name of the company"
+          - name: Total_Amount_Invested_USDollars
+            description: "Total amount invested in US dollars"
+          - name: Value_of_Interest
+            description: "Value of ownership interest"
+          - name: Terms_of_Interest
+            description: "Terms of the ownership interest"
+          - name: Record_ID
+            description: "Unique record identifier"
+          - name: Program_Year
+            description: "Program year"

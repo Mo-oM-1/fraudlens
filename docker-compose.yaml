@@ -25,6 +25,7 @@ x-airflow-common:
     - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
     - ${AIRFLOW_PROJ_DIR:-.}/snowflake:/opt/airflow/snowflake
     - ${AIRFLOW_PROJ_DIR:-.}/snowflake/keys:/opt/airflow/snowflake/keys
+    - ${AIRFLOW_PROJ_DIR:-.}/dbt:/opt/airflow/dbt
     - ~/.aws:/home/airflow/.aws:ro
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -194,6 +195,17 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  dbt-docs:
+    <<: *airflow-common
+    command: bash -c "cd /opt/airflow/dbt && dbt docs generate --profiles-dir . && dbt docs serve --port 8085 --host 0.0.0.0 --profiles-dir ."
+    ports:
+      - "8085:8085"
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
