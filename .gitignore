@@ -1,7 +1,5 @@
 .env
 .aws
-terraform/
-.terraform/
 
 # Python cache
 __pycache__/
@@ -16,3 +14,13 @@ venv/
 # Snowflake private key
 snowflake/keys/*.p8
 rsa_*
+
+# dbt generated files
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
+dbt/package-lock.yml
+
+# macOS
+.DS_Store

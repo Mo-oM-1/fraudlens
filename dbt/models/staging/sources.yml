@@ -416,3 +416,159 @@ sources:
             description: "Unique record identifier"
           - name: Program_Year
             description: "Program year"
+
+  - name: nppes
+    database: AFFINE_NPPES_PROVIDER_DATA
+    schema: REF_DW
+    description: "NPPES (National Plan and Provider Enumeration System) - Snowflake Marketplace dataset with provider NPI registry"
+
+    tables:
+      - name: DIM_PROVIDER
+        description: "Provider master data - all healthcare providers with NPI numbers"
+        columns:
+          - name: PROVIDER_SK
+            description: "Surrogate key for the provider"
+          - name: NPI
+            description: "National Provider Identifier (10-digit unique ID)"
+          - name: ENTITY_TYPE_CODE
+            description: "Entity type code (1=Individual, 2=Organization)"
+          - name: ENTITY_TYPE_DESC
+            description: "Entity type description"
+          - name: ORGANIZATION_NAME_LBN
+            description: "Organization legal business name"
+          - name: PROVIDER_LAST_NAME
+            description: "Provider last name (for individuals)"
+          - name: PROVIDER_FIRST_NAME
+            description: "Provider first name (for individuals)"
+          - name: PROVIDER_MIDDLE_NAME
+            description: "Provider middle name"
+          - name: PROVIDER_NAME_PREFIX
+            description: "Name prefix (Dr., Mr., etc.)"
+          - name: PROVIDER_NAME_SUFFIX
+            description: "Name suffix (Jr., III, etc.)"
+          - name: PROVIDER_CREDENTIAL
+            description: "Provider credentials (MD, DO, RN, etc.)"
+          - name: PROVIDER_FULL_NAME
+            description: "Full name of the provider"
+          - name: PROVIDER_SEX_CODE
+            description: "Gender code (M/F)"
+          - name: PROVIDER_SEX_DESC
+            description: "Gender description"
+          - name: IS_SOLE_PROPRIETOR
+            description: "Whether provider is a sole proprietor"
+          - name: IS_ORGANIZATION_SUBPART
+            description: "Whether this is a subpart of an organization"
+          - name: PARENT_ORGANIZATION_LBN
+            description: "Parent organization legal business name"
+          - name: EIN
+            description: "Employer Identification Number"
+          - name: PRIMARY_TAXONOMY_CODE
+            description: "Primary healthcare taxonomy code"
+          - name: PRIMARY_TAXONOMY_LICENSE_NUMBER
+            description: "License number for primary taxonomy"
+          - name: PRIMARY_TAXONOMY_LICENSE_STATE
+            description: "State of license for primary taxonomy"
+          - name: ENUMERATION_DATE
+            description: "Date NPI was assigned"
+          - name: CERTIFICATION_DATE
+            description: "Date of certification"
+          - name: LAST_UPDATE_DATE
+            description: "Date of last update"
+          - name: DEACTIVATION_REASON_CODE
+            description: "Reason for NPI deactivation"
+          - name: DEACTIVATION_REASON_DESC
+            description: "Description of deactivation reason"
+          - name: DEACTIVATION_DATE
+            description: "Date NPI was deactivated"
+          - name: REACTIVATION_DATE
+            description: "Date NPI was reactivated"
+          - name: IS_ACTIVE
+            description: "Whether NPI is currently active"
+
+      - name: DIM_PROVIDER_ADDRESS
+        description: "Provider addresses - mailing and practice locations"
+        columns:
+          - name: PROVIDER_ADDRESS_SK
+            description: "Surrogate key for the address"
+          - name: PROVIDER_SK
+            description: "Foreign key to DIM_PROVIDER"
+          - name: NPI
+            description: "National Provider Identifier"
+          - name: ADDRESS_TYPE_CODE
+            description: "Type of address (MAILING, PRACTICE)"
+          - name: ADDRESS_TYPE_DESC
+            description: "Address type description"
+          - name: IS_PRIMARY
+            description: "Whether this is the primary address"
+          - name: ADDRESS_LINE_1
+            description: "Street address line 1"
+          - name: ADDRESS_LINE_2
+            description: "Street address line 2"
+          - name: CITY_NAME
+            description: "City name"
+          - name: STATE_CODE
+            description: "State code"
+          - name: POSTAL_CODE
+            description: "Full postal code"
+          - name: COUNTRY_CODE
+            description: "Country code"
+          - name: POSTAL_CODE_5
+            description: "5-digit ZIP code"
+          - name: TELEPHONE_NUMBER
+            description: "Phone number"
+          - name: FAX_NUMBER
+            description: "Fax number"
+          - name: FULL_ADDRESS
+            description: "Concatenated full address"
+
+      - name: DIM_PROVIDER_TAXONOMY
+        description: "Provider taxonomy codes - specialties and classifications"
+        columns:
+          - name: PROVIDER_TAXONOMY_SK
+            description: "Surrogate key for the taxonomy record"
+          - name: PROVIDER_SK
+            description: "Foreign key to DIM_PROVIDER"
+          - name: NPI
+            description: "National Provider Identifier"
+          - name: TAXONOMY_SEQUENCE
+            description: "Sequence number of the taxonomy"
+          - name: TAXONOMY_CODE
+            description: "Healthcare taxonomy code"
+          - name: IS_PRIMARY_TAXONOMY
+            description: "Whether this is the primary taxonomy"
+          - name: LICENSE_NUMBER
+            description: "License number for this taxonomy"
+          - name: LICENSE_STATE_CODE
+            description: "State of license"
+          - name: TAXONOMY_GROUP
+            description: "Taxonomy group"
+          - name: TAXONOMY_CLASSIFICATION
+            description: "Taxonomy classification (e.g., Physician, Nurse)"
+          - name: TAXONOMY_SPECIALIZATION
+            description: "Taxonomy specialization (e.g., Cardiology)"
+          - name: TAXONOMY_DEFINITION
+            description: "Definition of the taxonomy"
+          - name: PROVIDER_TYPE
+            description: "Type of provider"
+
+      - name: REF_TAXONOMY_CODE
+        description: "Reference table for healthcare taxonomy codes"
+        columns:
+          - name: TAXONOMY_CODE
+            description: "Unique taxonomy code"
+          - name: TAXONOMY_TYPE
+            description: "Type of taxonomy"
+          - name: TAXONOMY_CLASSIFICATION
+            description: "Classification category"
+          - name: TAXONOMY_SPECIALIZATION
+            description: "Specialization within classification"
+          - name: TAXONOMY_DEFINITION
+            description: "Full definition of the taxonomy"
+          - name: TAXONOMY_NOTES
+            description: "Additional notes"
+          - name: EFFECTIVE_DATE
+            description: "Date taxonomy became effective"
+          - name: DEACTIVATION_DATE
+            description: "Date taxonomy was deactivated"
+          - name: IS_ACTIVE
+            description: "Whether taxonomy is currently active"

@@ -30,3 +30,15 @@ models:
 
   - name: stg_open_payments_ownership
     description: "Staging view for Open Payments Ownership"
+
+  - name: stg_nppes_provider
+    description: "Staging view for NPPES Provider master data (active providers only)"
+
+  - name: stg_nppes_provider_address
+    description: "Staging view for NPPES Provider addresses"
+
+  - name: stg_nppes_provider_taxonomy
+    description: "Staging view for NPPES Provider taxonomy/specialty codes"
+
+  - name: stg_nppes_taxonomy_code
+    description: "Staging view for NPPES Taxonomy reference codes (active only)"

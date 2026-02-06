@@ -1,0 +1,133 @@
+version: 2
+
+models:
+  - name: silver_provider
+    description: "Provider master table enriched with NPPES data and exclusion status"
+    columns:
+      - name: NPI
+        description: "National Provider Identifier - Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: ENTITY_TYPE
+        description: "Individual or Organization"
+        tests:
+          - accepted_values:
+              values: ['Individual', 'Organization', 'Unknown']
+      - name: IS_EXCLUDED
+        description: "True if provider is on LEIE exclusion list"
+        tests:
+          - not_null
+
+  - name: silver_excluded_providers
+    description: "LEIE excluded providers enriched with NPPES data"
+    columns:
+      - name: EXCLUSION_ID
+        description: "Unique identifier for the exclusion record"
+        tests:
+          - unique
+          - not_null
+      - name: EXCLUSION_DATE
+        description: "Date of exclusion from Medicare/Medicaid"
+        tests:
+          - not_null
+      - name: IS_CURRENTLY_EXCLUDED
+        description: "True if still excluded (not reinstated)"
+        tests:
+          - not_null
+      - name: IS_HIGH_RISK
+        description: "True if excluded but still active in NPPES"
+        tests:
+          - not_null
+
+  - name: silver_payments
+    description: "Consolidated Open Payments (General, Research, Ownership)"
+    columns:
+      - name: PAYMENT_ID
+        description: "Unique payment identifier"
+        tests:
+          - unique
+          - not_null
+      - name: PAYMENT_CATEGORY
+        description: "Type of payment: GENERAL, RESEARCH, or OWNERSHIP"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['GENERAL', 'RESEARCH', 'OWNERSHIP']
+      - name: PAYMENT_RISK_TIER
+        description: "Risk tier based on payment amount"
+        tests:
+          - accepted_values:
+              values: ['VERY_HIGH', 'HIGH', 'MEDIUM', 'LOW', 'MINIMAL']
+      - name: IS_RECIPIENT_EXCLUDED
+        description: "True if recipient is on LEIE exclusion list"
+        tests:
+          - not_null
+
+  - name: silver_prescriptions
+    description: "Medicare Part D prescriptions with fraud indicators"
+    columns:
+      - name: PRESCRIPTION_ID
+        description: "Unique prescription record identifier"
+        tests:
+          - unique
+          - not_null
+      - name: NPI
+        description: "Prescriber National Provider Identifier"
+        tests:
+          - not_null
+      - name: RISK_TIER
+        description: "Fraud risk tier"
+        tests:
+          - accepted_values:
+              values: ['CRITICAL', 'VERY_HIGH', 'HIGH', 'MEDIUM', 'LOW']
+      - name: IS_PRESCRIBER_EXCLUDED
+        description: "True if prescriber is on LEIE exclusion list"
+        tests:
+          - not_null
+
+  - name: silver_facilities
+    description: "Unified healthcare facilities (Hospice, Home Health, LTCH, Nursing Homes)"
+    columns:
+      - name: FACILITY_ID
+        description: "Unique facility identifier"
+        tests:
+          - unique
+          - not_null
+      - name: CCN
+        description: "CMS Certification Number"
+        tests:
+          - not_null
+      - name: FACILITY_TYPE
+        description: "Type of facility"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HOSPICE', 'HOME_HEALTH', 'LTCH', 'NURSING_HOME']
+      - name: OWNERSHIP_CATEGORY
+        description: "Ownership category"
+        tests:
+          - accepted_values:
+              values: ['FOR_PROFIT', 'NON_PROFIT', 'GOVERNMENT', 'OTHER']
+
+  - name: silver_hospital_spending
+    description: "Medicare hospital spending with benchmarks"
+    columns:
+      - name: SPENDING_ID
+        description: "Unique spending record identifier"
+        tests:
+          - unique
+          - not_null
+      - name: CCN
+        description: "CMS Certification Number"
+        tests:
+          - not_null
+      - name: SPENDING_RISK_TIER
+        description: "Spending risk classification"
+        tests:
+          - accepted_values:
+              values: ['HIGH', 'MEDIUM', 'LOW', 'NORMAL']
+      - name: IS_HIGH_SPENDER
+        description: "True if spending is 50%+ above national average"
+        tests:
+          - not_null
