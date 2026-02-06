@@ -54,30 +54,30 @@ jobs:
 
       - name: Verify dbt connection
         working-directory: ./dbt
-        run: dbt debug
+        run: dbt debug --profiles-dir ~/.dbt
 
       - name: Install dbt packages
         working-directory: ./dbt
-        run: dbt deps
+        run: dbt deps --profiles-dir ~/.dbt
 
       - name: Run dbt staging models
         working-directory: ./dbt
-        run: dbt run --select staging
+        run: dbt run --select staging --profiles-dir ~/.dbt
 
       - name: Run dbt silver models
         working-directory: ./dbt
-        run: dbt run --select silver
+        run: dbt run --select silver --profiles-dir ~/.dbt
 
       - name: Run dbt gold models
         working-directory: ./dbt
-        run: dbt run --select gold
+        run: dbt run --select gold --profiles-dir ~/.dbt
 
       - name: Run dbt tests
         working-directory: ./dbt
-        run: dbt test
+        run: dbt test --profiles-dir ~/.dbt
 
       - name: Generate and upload docs
         working-directory: ./dbt
         run: |
-          dbt docs generate
+          dbt docs generate --profiles-dir ~/.dbt
           echo "📚 dbt docs generated successfully"
