@@ -1,25 +1,56 @@
 """
 Snowflake connection utility for the dashboard.
-Optimized with st.connection and caching best practices.
+Optimized with caching best practices.
 """
 import streamlit as st
+import snowflake.connector
 import pandas as pd
 
 
 @st.cache_resource
 def get_snowflake_connection():
     """
-    Create a cached Snowflake connection using st.connection.
-    Uses @cache_resource to maintain a single connection pool across reruns.
+    Create a cached Snowflake connection.
+    Uses @cache_resource to maintain a single connection across reruns.
     """
-    return st.connection("snowflake", type="sql")
+    if hasattr(st, 'secrets') and 'connections' in st.secrets and 'snowflake' in st.secrets['connections']:
+        # New format: [connections.snowflake]
+        config = st.secrets["connections"]["snowflake"]
+    elif hasattr(st, 'secrets') and 'snowflake' in st.secrets:
+        # Old format: [snowflake]
+        config = st.secrets["snowflake"]
+    else:
+        raise ValueError("Snowflake credentials not found in secrets")
+
+    return snowflake.connector.connect(
+        account=config["account"],
+        user=config["user"],
+        password=config["password"],
+        warehouse=config["warehouse"],
+        database=config["database"],
+        schema=config.get("schema", "GOLD")
+    )
 
 
 @st.cache_data(ttl=600)
 def run_query(query: str) -> pd.DataFrame:
     """Execute a query and return results as a DataFrame. Cached for 10 minutes."""
     conn = get_snowflake_connection()
-    return conn.query(query)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        columns = [desc[0] for desc in cursor.description]
+        data = cursor.fetchall()
+        return pd.DataFrame(data, columns=columns)
+    except snowflake.connector.errors.ProgrammingError:
+        # Connection might be stale, clear cache and retry
+        get_snowflake_connection.clear()
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(query)
+        columns = [desc[0] for desc in cursor.description]
+        data = cursor.fetchall()
+        return pd.DataFrame(data, columns=columns)
 
 
 # =============================================================================
