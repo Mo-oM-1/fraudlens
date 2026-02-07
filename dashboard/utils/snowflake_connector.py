@@ -6,8 +6,9 @@ import snowflake.connector
 import pandas as pd
 
 
+@st.cache_resource
 def get_snowflake_connection():
-    """Create a Snowflake connection using secrets."""
+    """Create a cached Snowflake connection. Reused across requests."""
     config = st.secrets["snowflake"]
 
     return snowflake.connector.connect(
@@ -24,14 +25,11 @@ def get_snowflake_connection():
 def run_query(query: str) -> pd.DataFrame:
     """Execute a query and return results as a DataFrame. Cached for 10 minutes."""
     conn = get_snowflake_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        columns = [desc[0] for desc in cursor.description]
-        data = cursor.fetchall()
-        return pd.DataFrame(data, columns=columns)
-    finally:
-        conn.close()
+    cursor = conn.cursor()
+    cursor.execute(query)
+    columns = [desc[0] for desc in cursor.description]
+    data = cursor.fetchall()
+    return pd.DataFrame(data, columns=columns)
 
 
 def get_kpis():
