@@ -27,23 +27,20 @@ with DAG(
 
     # -------------------------------------------------------------------
     # TASK 1 : Create warehouse
-    # Utilise snowflake_bootstrap (COMPUTE_WH) pour éviter la dépendance
-    # circulaire - le warehouse FRAUDLENS_WH n'existe pas encore
     # -------------------------------------------------------------------
     create_warehouse = SnowflakeSqlApiOperator(
         task_id='create_warehouse',
-        snowflake_conn_id='snowflake_bootstrap',
+        snowflake_conn_id='snowflake_default',
         sql='init_warehouse.sql',
         statement_count=1,
     )
 
     # -------------------------------------------------------------------
     # TASK 2 : Create database & schemas
-    # Utilise snowflake_bootstrap car la DB n'existe pas encore
     # -------------------------------------------------------------------
     create_schemas = SnowflakeSqlApiOperator(
         task_id='create_schemas',
-        snowflake_conn_id='snowflake_bootstrap',
+        snowflake_conn_id='snowflake_default',
         sql='init_schemas.sql',
         statement_count=7,
     )

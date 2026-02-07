@@ -19,7 +19,7 @@ st.markdown("""
         font-weight: bold;
         text-align: center;
         padding: 2rem 0;
-        background: linear-gradient(90deg, #4a90d9, #7c3aed);
+        background: linear-gradient(90deg, #74b9ff, #a29bfe);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -39,7 +39,7 @@ st.markdown("""
     .stat-highlight {
         font-size: 2rem;
         font-weight: bold;
-        color: #4a90d9;
+        color: #74b9ff;
     }
 </style>
 """, unsafe_allow_html=True)

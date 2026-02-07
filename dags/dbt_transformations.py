@@ -41,7 +41,7 @@ def log_dbt_complete(**context):
 with DAG(
     dag_id="dbt_transformations",
     default_args=default_args,
-    schedule="@daily",
+    schedule=None,
     catchup=False,
     doc_md="""
     ## dbt Transformations DAG
