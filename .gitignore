@@ -19,6 +19,7 @@ rsa_*
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+dbt/docs/
 dbt/.user.yml
 dbt/package-lock.yml
 

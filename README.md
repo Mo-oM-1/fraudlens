@@ -167,5 +167,42 @@ docker exec fraudlens-airflow-worker-1 airflow dags trigger master_dag
 
 ---
 
+## CI/CD
+
+Le projet utilise **GitHub Actions** pour l'intégration et le déploiement continu.
+
+### Workflows
+
+| Workflow | Déclencheur | Action |
+|----------|-------------|--------|
+| `dbt_test.yml` | Pull Request | Tests dbt (compile + test) |
+| `dbt_deploy.yml` | Merge sur main | Déploiement (run staging → silver → gold) |
+| `lint.yml` | Pull Request | Linting SQL avec SQLFluff |
+
+### Authentification
+
+L'authentification Snowflake utilise une **clé privée RSA** configurée dans les secrets GitHub :
+
+- `SNOWFLAKE_ACCOUNT`
+- `SNOWFLAKE_USER`
+- `SNOWFLAKE_WAREHOUSE`
+- `SNOWFLAKE_DATABASE`
+- `SNOWFLAKE_PRIVATE_KEY`
+
+### Flux de travail
+
+```
+1. Créer une branche feature
+2. Modifier les modèles dbt
+3. Ouvrir une Pull Request
+4. → dbt_test.yml s'exécute automatiquement
+5. Merger la PR
+6. → dbt_deploy.yml déploie en production
+```
+
+Voir [docs/CICD_Documentation.pdf](docs/CICD_Documentation.pdf) pour plus de détails.
+
+---
+
 ## Auteur
 MooM - FraudLens Project | 2026
