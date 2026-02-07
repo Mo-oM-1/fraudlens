@@ -1,55 +1,33 @@
 """
 Snowflake connection utility for the dashboard.
+Optimized with st.connection and caching best practices.
 """
-import os
 import streamlit as st
-import snowflake.connector
 import pandas as pd
-from pathlib import Path
 
 
+@st.cache_resource
 def get_snowflake_connection():
-    """Create a Snowflake connection using secrets or environment variables."""
-
-    # Try Streamlit secrets first (for cloud deployment)
-    if hasattr(st, 'secrets') and 'snowflake' in st.secrets:
-        conn = snowflake.connector.connect(
-            account=st.secrets["snowflake"]["account"],
-            user=st.secrets["snowflake"]["user"],
-            password=st.secrets["snowflake"]["password"],
-            warehouse=st.secrets["snowflake"]["warehouse"],
-            database=st.secrets["snowflake"]["database"],
-            schema=st.secrets["snowflake"].get("schema", "GOLD")
-        )
-    else:
-        # Local development - use environment variables
-        conn = snowflake.connector.connect(
-            account=os.environ.get('SNOWFLAKE_ACCOUNT'),
-            user=os.environ.get('SNOWFLAKE_USER'),
-            password=os.environ.get('SNOWFLAKE_PASSWORD'),
-            warehouse=os.environ.get('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH'),
-            database=os.environ.get('SNOWFLAKE_DATABASE', 'FRAUDLENS_DB'),
-            schema=os.environ.get('SNOWFLAKE_SCHEMA', 'GOLD')
-        )
-
-    return conn
+    """
+    Create a cached Snowflake connection using st.connection.
+    Uses @cache_resource to maintain a single connection pool across reruns.
+    """
+    return st.connection("snowflake", type="sql")
 
 
-@st.cache_data(ttl=600)  # Cache for 10 minutes
+@st.cache_data(ttl=600)
 def run_query(query: str) -> pd.DataFrame:
-    """Execute a query and return results as a DataFrame."""
+    """Execute a query and return results as a DataFrame. Cached for 10 minutes."""
     conn = get_snowflake_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        columns = [desc[0] for desc in cursor.description]
-        data = cursor.fetchall()
-        return pd.DataFrame(data, columns=columns)
-    finally:
-        conn.close()
+    return conn.query(query)
 
 
-def get_kpis():
+# =============================================================================
+# KPI & Overview Queries
+# =============================================================================
+
+@st.cache_data(ttl=600)
+def get_kpis() -> pd.DataFrame:
     """Get main KPIs for the overview page."""
     query = """
     SELECT
@@ -58,12 +36,13 @@ def get_kpis():
         COUNT(CASE WHEN HAS_PRESCRIPTIONS THEN 1 END) as PROVIDERS_WITH_PRESCRIPTIONS,
         COUNT(CASE WHEN IS_EXCLUDED THEN 1 END) as EXCLUDED_PROVIDERS,
         COUNT(CASE WHEN IS_EXCLUDED AND (HAS_PHARMA_PAYMENTS OR HAS_PRESCRIPTIONS) THEN 1 END) as EXCLUDED_WITH_ACTIVITY
-    FROM FRAUDLENS_DB.GOLD.PROVIDER_360
+    FROM FRAUDLENS.GOLD.PROVIDER_360
     """
     return run_query(query)
 
 
-def get_risk_distribution():
+@st.cache_data(ttl=600)
+def get_risk_distribution() -> pd.DataFrame:
     """Get fraud risk score distribution."""
     query = """
     SELECT
@@ -71,7 +50,7 @@ def get_risk_distribution():
         COUNT(*) as COUNT,
         ROUND(AVG(FRAUD_RISK_SCORE), 1) as AVG_SCORE,
         ROUND(SUM(TOTAL_FINANCIAL_EXPOSURE), 0) as TOTAL_EXPOSURE
-    FROM FRAUDLENS_DB.GOLD.FRAUD_RISK_SCORE
+    FROM FRAUDLENS.GOLD.FRAUD_RISK_SCORE
     WHERE RISK_TIER IS NOT NULL
     GROUP BY RISK_TIER
     ORDER BY AVG_SCORE DESC
@@ -79,7 +58,8 @@ def get_risk_distribution():
     return run_query(query)
 
 
-def get_alerts_summary():
+@st.cache_data(ttl=600)
+def get_alerts_summary() -> pd.DataFrame:
     """Get alerts summary by type."""
     query = """
     SELECT
@@ -87,14 +67,19 @@ def get_alerts_summary():
         RISK_TIER,
         COUNT(*) as NB_ALERTS,
         ROUND(SUM(FINANCIAL_EXPOSURE), 0) as TOTAL_EXPOSURE
-    FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
+    FROM FRAUDLENS.GOLD.HIGH_RISK_ALERTS
     GROUP BY ALERT_TYPE, RISK_TIER
     ORDER BY NB_ALERTS DESC
     """
     return run_query(query)
 
 
-def get_alerts_list(alert_type: str = None, limit: int = 100):
+# =============================================================================
+# Alerts Queries
+# =============================================================================
+
+@st.cache_data(ttl=300)
+def get_alerts_list(alert_type: str = None, limit: int = 100) -> pd.DataFrame:
     """Get list of alerts with optional filtering."""
     where_clause = f"WHERE ALERT_TYPE = '{alert_type}'" if alert_type else ""
     query = f"""
@@ -110,7 +95,7 @@ def get_alerts_list(alert_type: str = None, limit: int = 100):
         ALERT_DESCRIPTION,
         FINANCIAL_EXPOSURE,
         PRIORITY_RANK
-    FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
+    FROM FRAUDLENS.GOLD.HIGH_RISK_ALERTS
     {where_clause}
     ORDER BY PRIORITY_RANK, RISK_SCORE DESC
     LIMIT {limit}
@@ -118,28 +103,35 @@ def get_alerts_list(alert_type: str = None, limit: int = 100):
     return run_query(query)
 
 
-def get_provider_details(npi: str):
+# =============================================================================
+# Provider Queries
+# =============================================================================
+
+@st.cache_data(ttl=300)
+def get_provider_details(npi: str) -> pd.DataFrame:
     """Get full provider details from Provider 360."""
     query = f"""
     SELECT *
-    FROM FRAUDLENS_DB.GOLD.PROVIDER_360
+    FROM FRAUDLENS.GOLD.PROVIDER_360
     WHERE NPI = '{npi}'
     """
     return run_query(query)
 
 
-def get_provider_alerts(npi: str):
+@st.cache_data(ttl=300)
+def get_provider_alerts(npi: str) -> pd.DataFrame:
     """Get alerts for a specific provider."""
     query = f"""
     SELECT *
-    FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
+    FROM FRAUDLENS.GOLD.HIGH_RISK_ALERTS
     WHERE NPI = '{npi}'
     ORDER BY PRIORITY_RANK
     """
     return run_query(query)
 
 
-def search_providers(search_term: str, limit: int = 50):
+@st.cache_data(ttl=120)
+def search_providers(search_term: str, limit: int = 50) -> pd.DataFrame:
     """Search providers by NPI or name."""
     query = f"""
     SELECT
@@ -150,7 +142,7 @@ def search_providers(search_term: str, limit: int = 50):
         STATE,
         IS_EXCLUDED,
         TOTAL_FINANCIAL_EXPOSURE
-    FROM FRAUDLENS_DB.GOLD.PROVIDER_360
+    FROM FRAUDLENS.GOLD.PROVIDER_360
     WHERE NPI LIKE '%{search_term}%'
        OR UPPER(FULL_NAME) LIKE '%{search_term.upper()}%'
        OR UPPER(ORGANIZATION_NAME) LIKE '%{search_term.upper()}%'
@@ -160,7 +152,12 @@ def search_providers(search_term: str, limit: int = 50):
     return run_query(query)
 
 
-def get_payments_by_state():
+# =============================================================================
+# Analytics Queries
+# =============================================================================
+
+@st.cache_data(ttl=600)
+def get_payments_by_state() -> pd.DataFrame:
     """Get payment aggregations by state."""
     query = """
     SELECT
@@ -168,8 +165,8 @@ def get_payments_by_state():
         COUNT(DISTINCT p.NPI) as PROVIDER_COUNT,
         SUM(ps.TOTAL_PAYMENT_AMOUNT) as TOTAL_PAYMENTS,
         AVG(ps.TOTAL_PAYMENT_AMOUNT) as AVG_PAYMENT
-    FROM FRAUDLENS_DB.GOLD.PAYMENTS_SUMMARY ps
-    JOIN FRAUDLENS_DB.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
+    FROM FRAUDLENS.GOLD.PAYMENTS_SUMMARY ps
+    JOIN FRAUDLENS.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
     WHERE p.STATE IS NOT NULL
     GROUP BY p.STATE
     ORDER BY TOTAL_PAYMENTS DESC
@@ -177,7 +174,8 @@ def get_payments_by_state():
     return run_query(query)
 
 
-def get_top_recipients():
+@st.cache_data(ttl=600)
+def get_top_recipients() -> pd.DataFrame:
     """Get top payment recipients with excluded providers prioritized."""
     query = """
     SELECT
@@ -188,15 +186,16 @@ def get_top_recipients():
         ps.TOTAL_PAYMENT_AMOUNT,
         ps.RECIPIENT_TIER,
         p.IS_EXCLUDED
-    FROM FRAUDLENS_DB.GOLD.PAYMENTS_SUMMARY ps
-    JOIN FRAUDLENS_DB.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
+    FROM FRAUDLENS.GOLD.PAYMENTS_SUMMARY ps
+    JOIN FRAUDLENS.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
     ORDER BY p.IS_EXCLUDED DESC, ps.TOTAL_PAYMENT_AMOUNT DESC
     LIMIT 100
     """
     return run_query(query)
 
 
-def get_excluded_with_activity():
+@st.cache_data(ttl=600)
+def get_excluded_with_activity() -> pd.DataFrame:
     """Get excluded providers that still have activity."""
     query = """
     SELECT
@@ -209,7 +208,7 @@ def get_excluded_with_activity():
         p.TOTAL_PAYMENT_AMOUNT,
         p.TOTAL_PRESCRIPTION_COST,
         p.TOTAL_FINANCIAL_EXPOSURE
-    FROM FRAUDLENS_DB.GOLD.PROVIDER_360 p
+    FROM FRAUDLENS.GOLD.PROVIDER_360 p
     WHERE p.IS_EXCLUDED = TRUE
       AND (p.HAS_PHARMA_PAYMENTS = TRUE OR p.HAS_PRESCRIPTIONS = TRUE)
     ORDER BY p.TOTAL_FINANCIAL_EXPOSURE DESC
