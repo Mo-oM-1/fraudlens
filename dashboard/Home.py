@@ -46,7 +46,7 @@ st.markdown("""
 
 # Header
 st.markdown('<h1 class="main-header">🔍 FraudLens</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">AI-Powered Healthcare Fraud Detection & Compliance Analytics</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Healthcare Fraud Detection & Compliance Analytics</p>', unsafe_allow_html=True)
 
 st.divider()
 
@@ -162,16 +162,16 @@ st.markdown("Use the **sidebar navigation** to explore the dashboard pages:")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.page_link("pages/1_Overview.py", label="📊 Overview", icon="📊")
+    st.page_link("pages/1_Overview.py", label="Overview", icon="📊")
 
 with col2:
-    st.page_link("pages/2_Fraud_Alerts.py", label="🚨 Fraud Alerts", icon="🚨")
+    st.page_link("pages/2_Fraud_Alerts.py", label="Fraud Alerts", icon="🚨")
 
 with col3:
-    st.page_link("pages/3_Provider_360.py", label="👤 Provider 360", icon="👤")
+    st.page_link("pages/3_Provider_360.py", label="Provider 360", icon="👤")
 
 with col4:
-    st.page_link("pages/4_Analytics.py", label="📈 Analytics", icon="📈")
+    st.page_link("pages/4_Analytics.py", label="Analytics", icon="📈")
 
 # Footer
 st.divider()
