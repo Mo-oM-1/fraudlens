@@ -178,7 +178,7 @@ def get_payments_by_state():
 
 
 def get_top_recipients():
-    """Get top payment recipients."""
+    """Get top payment recipients with excluded providers prioritized."""
     query = """
     SELECT
         p.NPI,
@@ -190,7 +190,7 @@ def get_top_recipients():
         p.IS_EXCLUDED
     FROM FRAUDLENS_DB.GOLD.PAYMENTS_SUMMARY ps
     JOIN FRAUDLENS_DB.GOLD.PROVIDER_360 p ON ps.NPI = p.NPI
-    ORDER BY ps.TOTAL_PAYMENT_AMOUNT DESC
+    ORDER BY p.IS_EXCLUDED DESC, ps.TOTAL_PAYMENT_AMOUNT DESC
     LIMIT 100
     """
     return run_query(query)
