@@ -1,26 +1,14 @@
 """
 Snowflake connection utility for the dashboard.
-Optimized with caching best practices.
 """
 import streamlit as st
 import snowflake.connector
 import pandas as pd
 
 
-@st.cache_resource
 def get_snowflake_connection():
-    """
-    Create a cached Snowflake connection.
-    Uses @cache_resource to maintain a single connection across reruns.
-    """
-    if hasattr(st, 'secrets') and 'connections' in st.secrets and 'snowflake' in st.secrets['connections']:
-        # New format: [connections.snowflake]
-        config = st.secrets["connections"]["snowflake"]
-    elif hasattr(st, 'secrets') and 'snowflake' in st.secrets:
-        # Old format: [snowflake]
-        config = st.secrets["snowflake"]
-    else:
-        raise ValueError("Snowflake credentials not found in secrets")
+    """Create a Snowflake connection using secrets."""
+    config = st.secrets["snowflake"]
 
     return snowflake.connector.connect(
         account=config["account"],
@@ -42,23 +30,11 @@ def run_query(query: str) -> pd.DataFrame:
         columns = [desc[0] for desc in cursor.description]
         data = cursor.fetchall()
         return pd.DataFrame(data, columns=columns)
-    except snowflake.connector.errors.ProgrammingError:
-        # Connection might be stale, clear cache and retry
-        get_snowflake_connection.clear()
-        conn = get_snowflake_connection()
-        cursor = conn.cursor()
-        cursor.execute(query)
-        columns = [desc[0] for desc in cursor.description]
-        data = cursor.fetchall()
-        return pd.DataFrame(data, columns=columns)
+    finally:
+        conn.close()
 
 
-# =============================================================================
-# KPI & Overview Queries
-# =============================================================================
-
-@st.cache_data(ttl=600)
-def get_kpis() -> pd.DataFrame:
+def get_kpis():
     """Get main KPIs for the overview page."""
     query = """
     SELECT
@@ -72,8 +48,7 @@ def get_kpis() -> pd.DataFrame:
     return run_query(query)
 
 
-@st.cache_data(ttl=600)
-def get_risk_distribution() -> pd.DataFrame:
+def get_risk_distribution():
     """Get fraud risk score distribution."""
     query = """
     SELECT
@@ -89,8 +64,7 @@ def get_risk_distribution() -> pd.DataFrame:
     return run_query(query)
 
 
-@st.cache_data(ttl=600)
-def get_alerts_summary() -> pd.DataFrame:
+def get_alerts_summary():
     """Get alerts summary by type."""
     query = """
     SELECT
@@ -105,12 +79,7 @@ def get_alerts_summary() -> pd.DataFrame:
     return run_query(query)
 
 
-# =============================================================================
-# Alerts Queries
-# =============================================================================
-
-@st.cache_data(ttl=300)
-def get_alerts_list(alert_type: str = None, limit: int = 100) -> pd.DataFrame:
+def get_alerts_list(alert_type: str = None, limit: int = 100):
     """Get list of alerts with optional filtering."""
     where_clause = f"WHERE ALERT_TYPE = '{alert_type}'" if alert_type else ""
     query = f"""
@@ -134,12 +103,7 @@ def get_alerts_list(alert_type: str = None, limit: int = 100) -> pd.DataFrame:
     return run_query(query)
 
 
-# =============================================================================
-# Provider Queries
-# =============================================================================
-
-@st.cache_data(ttl=300)
-def get_provider_details(npi: str) -> pd.DataFrame:
+def get_provider_details(npi: str):
     """Get full provider details from Provider 360."""
     query = f"""
     SELECT *
@@ -149,8 +113,7 @@ def get_provider_details(npi: str) -> pd.DataFrame:
     return run_query(query)
 
 
-@st.cache_data(ttl=300)
-def get_provider_alerts(npi: str) -> pd.DataFrame:
+def get_provider_alerts(npi: str):
     """Get alerts for a specific provider."""
     query = f"""
     SELECT *
@@ -161,8 +124,7 @@ def get_provider_alerts(npi: str) -> pd.DataFrame:
     return run_query(query)
 
 
-@st.cache_data(ttl=120)
-def search_providers(search_term: str, limit: int = 50) -> pd.DataFrame:
+def search_providers(search_term: str, limit: int = 50):
     """Search providers by NPI or name."""
     query = f"""
     SELECT
@@ -183,12 +145,7 @@ def search_providers(search_term: str, limit: int = 50) -> pd.DataFrame:
     return run_query(query)
 
 
-# =============================================================================
-# Analytics Queries
-# =============================================================================
-
-@st.cache_data(ttl=600)
-def get_payments_by_state() -> pd.DataFrame:
+def get_payments_by_state():
     """Get payment aggregations by state."""
     query = """
     SELECT
@@ -205,8 +162,7 @@ def get_payments_by_state() -> pd.DataFrame:
     return run_query(query)
 
 
-@st.cache_data(ttl=600)
-def get_top_recipients() -> pd.DataFrame:
+def get_top_recipients():
     """Get top payment recipients with excluded providers prioritized."""
     query = """
     SELECT
@@ -225,8 +181,7 @@ def get_top_recipients() -> pd.DataFrame:
     return run_query(query)
 
 
-@st.cache_data(ttl=600)
-def get_excluded_with_activity() -> pd.DataFrame:
+def get_excluded_with_activity():
     """Get excluded providers that still have activity."""
     query = """
     SELECT
