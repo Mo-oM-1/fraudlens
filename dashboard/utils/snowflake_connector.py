@@ -21,9 +21,9 @@ def get_snowflake_connection():
     )
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=604800)
 def run_query(query: str) -> pd.DataFrame:
-    """Execute a query and return results as a DataFrame. Cached for 10 minutes."""
+    """Execute a query and return results as a DataFrame. Cached for 1 week."""
     conn = get_snowflake_connection()
     cursor = conn.cursor()
     cursor.execute(query)
