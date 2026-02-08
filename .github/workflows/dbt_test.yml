@@ -3,9 +3,6 @@ name: dbt Tests
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'dbt/**'
-      - '.github/workflows/dbt_test.yml'
 
 env:
   SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
