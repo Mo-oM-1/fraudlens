@@ -3,9 +3,6 @@ name: dbt Tests
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'dbt/**'
-      - '.github/workflows/dbt_test.yml'
 
 env:
   SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -68,10 +65,13 @@ jobs:
       - name: Compile dbt models
         working-directory: ./dbt
         run: dbt compile --profiles-dir $HOME/.dbt
-
-      - name: Run dbt tests
+      
+      - name: Run full refresh and tests
         working-directory: ./dbt
-        run: dbt test --select staging silver gold --profiles-dir $HOME/.dbt
+        run: |
+          dbt clean --profiles-dir $HOME/.dbt
+          dbt run --full-refresh --select gold --profiles-dir $HOME/.dbt
+          dbt test --select gold --profiles-dir $HOME/.dbt
 
       - name: Generate docs
         working-directory: ./dbt
