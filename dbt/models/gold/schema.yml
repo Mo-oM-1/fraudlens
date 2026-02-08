@@ -139,7 +139,7 @@ models:
         description: "Payment recipient tier"
         tests:
           - accepted_values:
-              values: ['MEGA_RECIPIENT', 'MAJOR_RECIPIENT', 'MODERATE_RECIPIENT', 'MINOR_RECIPIENT']
+              values: ['MEGA_RECIPIENT', 'MAJOR_RECIPIENT', 'SIGNIFICANT_RECIPIENT', 'MODERATE_RECIPIENT', 'MINOR_RECIPIENT']
 
   - name: prescriptions_summary
     description: "Aggregated prescription metrics by provider"

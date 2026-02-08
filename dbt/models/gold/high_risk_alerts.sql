@@ -12,23 +12,34 @@
     Each row = one alert requiring review.
 */
 
-with fraud_scores as (
+with provider_360 as (
+    select NPI from {{ ref('provider_360') }}
+),
+
+fraud_scores as (
     select * from {{ ref('fraud_risk_score') }}
 ),
 
 excluded_providers as (
-    select * from {{ ref('excluded_providers') }}
-    where IS_CURRENTLY_EXCLUDED = true
+    select ep.*
+    from {{ ref('excluded_providers') }} ep
+    inner join provider_360 p360 on ep.NPI = p360.NPI  -- Only include if in provider_360
+    where ep.IS_CURRENTLY_EXCLUDED = true
+    qualify row_number() over (partition by ep.NPI order by ep.EXCLUSION_DATE desc) = 1
 ),
 
 payments as (
-    select * from {{ ref('payments') }}
-    where IS_RECIPIENT_EXCLUDED = true
+    select pay.*
+    from {{ ref('payments') }} pay
+    inner join provider_360 p360 on pay.NPI = p360.NPI  -- Only include if in provider_360
+    where pay.IS_RECIPIENT_EXCLUDED = true
 ),
 
 prescriptions as (
-    select * from {{ ref('prescriptions') }}
-    where IS_PRESCRIBER_EXCLUDED = true
+    select rx.*
+    from {{ ref('prescriptions') }} rx
+    inner join provider_360 p360 on rx.NPI = p360.NPI  -- Only include if in provider_360
+    where rx.IS_PRESCRIBER_EXCLUDED = true
 ),
 
 -- Alert Type 1: High Risk Score Providers
@@ -141,7 +152,7 @@ all_alerts as (
     select * from high_brand_alerts
 ),
 
-final as (
+deduplicated as (
     select
         ALERT_ID,
         ALERT_TYPE,
@@ -164,11 +175,27 @@ final as (
             when ALERT_TYPE = 'HIGH_RISK_SCORE' and RISK_TIER = 'CRITICAL' then 4
             when ALERT_TYPE = 'HIGH_BRAND_PRESCRIBER' then 5
             else 6
-        end as PRIORITY_RANK,
-
-        current_timestamp() as _loaded_at
+        end as PRIORITY_RANK
 
     from all_alerts
+    -- Deduplicate: keep highest priority alert per ALERT_ID
+    qualify row_number() over (partition by ALERT_ID order by
+        case
+            when ALERT_TYPE = 'EXCLUDED_STILL_ACTIVE' then 1
+            when ALERT_TYPE = 'PRESCRIPTION_BY_EXCLUDED' then 2
+            when ALERT_TYPE = 'PAYMENT_TO_EXCLUDED' then 3
+            when ALERT_TYPE = 'HIGH_RISK_SCORE' then 4
+            when ALERT_TYPE = 'HIGH_BRAND_PRESCRIBER' then 5
+            else 6
+        end
+    ) = 1
+),
+
+final as (
+    select
+        *,
+        current_timestamp() as _loaded_at
+    from deduplicated
 )
 
 select * from final

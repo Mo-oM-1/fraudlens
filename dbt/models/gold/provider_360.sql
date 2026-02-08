@@ -33,6 +33,7 @@ excluded as (
         IS_HIGH_RISK as IS_EXCLUDED_HIGH_RISK
     from {{ ref('excluded_providers') }}
     where NPI is not null
+    qualify row_number() over (partition by NPI order by EXCLUSION_DATE desc) = 1
 ),
 
 final as (
