@@ -1,4 +1,4 @@
-name: dbt Deploy
+name: dbt Docs
 
 on:
   push:
@@ -14,8 +14,8 @@ env:
   SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
 
 jobs:
-  dbt-deploy:
-    name: Deploy dbt Models
+  dbt-docs:
+    name: Generate dbt Documentation
     runs-on: ubuntu-latest
 
     steps:
@@ -65,23 +65,11 @@ jobs:
         working-directory: ./dbt
         run: dbt deps --profiles-dir $HOME/.dbt
 
-      - name: Run dbt staging models
+      - name: Compile dbt models
         working-directory: ./dbt
-        run: dbt run --select staging --profiles-dir $HOME/.dbt
+        run: dbt compile --profiles-dir $HOME/.dbt
 
-      - name: Run dbt silver models
-        working-directory: ./dbt
-        run: dbt run --select silver --profiles-dir $HOME/.dbt
-
-      - name: Run dbt gold models
-        working-directory: ./dbt
-        run: dbt run --select gold --profiles-dir $HOME/.dbt
-
-      - name: Run dbt tests
-        working-directory: ./dbt
-        run: dbt test --profiles-dir $HOME/.dbt
-
-      - name: Generate and upload docs
+      - name: Generate dbt docs
         working-directory: ./dbt
         run: |
           dbt docs generate --profiles-dir $HOME/.dbt
