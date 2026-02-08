@@ -17,18 +17,18 @@ def get_snowflake_connection():
         password=config["password"],
         warehouse=config["warehouse"],
         database=config["database"],
-        schema=config.get("schema", "GOLD"),
+        schema=config.get("schema", "GOLD")
     )
 
 
 @st.cache_data(ttl=2592000)
-def run_query(query: str, params: tuple | None = None) -> pd.DataFrame:
+def run_query(query: str) -> pd.DataFrame:
     """Execute a query and return results as a DataFrame. Cached for 1 month."""
     conn = get_snowflake_connection()
-    with conn.cursor() as cursor:
-        cursor.execute(query, params or ())
-        columns = [desc[0] for desc in cursor.description]
-        data = cursor.fetchall()
+    cursor = conn.cursor()
+    cursor.execute(query)
+    columns = [desc[0] for desc in cursor.description]
+    data = cursor.fetchall()
     return pd.DataFrame(data, columns=columns)
 
 
@@ -77,9 +77,10 @@ def get_alerts_summary():
     return run_query(query)
 
 
-def get_alerts_list(alert_type: str | None = None, limit: int = 100):
+def get_alerts_list(alert_type: str = None, limit: int = 100):
     """Get list of alerts with optional filtering."""
-    base_query = """
+    where_clause = f"WHERE ALERT_TYPE = '{alert_type}'" if alert_type else ""
+    query = f"""
     SELECT
         ALERT_ID,
         ALERT_TYPE,
@@ -93,48 +94,37 @@ def get_alerts_list(alert_type: str | None = None, limit: int = 100):
         FINANCIAL_EXPOSURE,
         PRIORITY_RANK
     FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
+    {where_clause}
+    ORDER BY PRIORITY_RANK, RISK_SCORE DESC
+    LIMIT {limit}
     """
-    params = []
-    where_clauses = []
-
-    if alert_type:
-        where_clauses.append("ALERT_TYPE = %s")
-        params.append(alert_type)
-
-    if where_clauses:
-        base_query += " WHERE " + " AND ".join(where_clauses)
-
-    base_query += " ORDER BY PRIORITY_RANK, RISK_SCORE DESC LIMIT %s"
-    params.append(limit)
-
-    return run_query(base_query, tuple(params))
+    return run_query(query)
 
 
 def get_provider_details(npi: str):
     """Get full provider details from Provider 360."""
-    query = """
+    query = f"""
     SELECT *
     FROM FRAUDLENS_DB.GOLD.PROVIDER_360
-    WHERE NPI = %s
+    WHERE NPI = '{npi}'
     """
-    return run_query(query, (npi,))
+    return run_query(query)
 
 
 def get_provider_alerts(npi: str):
     """Get alerts for a specific provider."""
-    query = """
+    query = f"""
     SELECT *
     FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
-    WHERE NPI = %s
+    WHERE NPI = '{npi}'
     ORDER BY PRIORITY_RANK
     """
-    return run_query(query, (npi,))
+    return run_query(query)
 
 
 def search_providers(search_term: str, limit: int = 50):
     """Search providers by NPI or name."""
-    like = f"%{search_term.upper()}%"
-    query = """
+    query = f"""
     SELECT
         NPI,
         COALESCE(FULL_NAME, ORGANIZATION_NAME) as NAME,
@@ -144,14 +134,13 @@ def search_providers(search_term: str, limit: int = 50):
         IS_EXCLUDED,
         TOTAL_FINANCIAL_EXPOSURE
     FROM FRAUDLENS_DB.GOLD.PROVIDER_360
-    WHERE NPI LIKE %s
-       OR UPPER(FULL_NAME) LIKE %s
-       OR UPPER(ORGANIZATION_NAME) LIKE %s
+    WHERE NPI LIKE '%{search_term}%'
+       OR UPPER(FULL_NAME) LIKE '%{search_term.upper()}%'
+       OR UPPER(ORGANIZATION_NAME) LIKE '%{search_term.upper()}%'
     ORDER BY TOTAL_FINANCIAL_EXPOSURE DESC NULLS LAST
-    LIMIT %s
+    LIMIT {limit}
     """
-    params = (like, like, like, limit)
-    return run_query(query, params)
+    return run_query(query)
 
 
 def get_payments_by_state():
