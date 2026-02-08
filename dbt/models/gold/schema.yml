@@ -91,6 +91,7 @@ models:
                 - 'PAYMENT_TO_EXCLUDED'
                 - 'PRESCRIPTION_BY_EXCLUDED'
                 - 'HIGH_BRAND_PRESCRIBER'
+                - 'SIGNIFICANT_RECIPIENT'
       - name: NPI
         description: "Provider NPI"
         tests:
