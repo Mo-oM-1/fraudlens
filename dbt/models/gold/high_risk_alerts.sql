@@ -34,6 +34,7 @@ payments as (
     from {{ ref('payments') }} pay
     inner join provider_360 p360 on pay.NPI = p360.NPI  -- Only include if in provider_360
     where pay.IS_RECIPIENT_EXCLUDED = true
+    and pay.NPI is not null
 ),
 
 prescriptions as (
@@ -88,7 +89,7 @@ payments_to_excluded_alerts as (
         'PAYMENT_TO_EXCLUDED' as ALERT_TYPE,
         NPI,
         FULL_NAME as PROVIDER_NAME,
-        SPECIALTY,
+        SPECIALTY_CLASSIFICATION as SPECIALTY,
         STATE,
         90 as RISK_SCORE,
         'CRITICAL' as RISK_TIER,
@@ -98,7 +99,7 @@ payments_to_excluded_alerts as (
         current_date() as ALERT_DATE
     from payments
     where NPI is not null
-    group by NPI, FULL_NAME, SPECIALTY, STATE, PAYER_NAME
+    group by NPI, FULL_NAME, SPECIALTY_CLASSIFICATION, STATE, PAYER_NAME
 ),
 
 -- Alert Type 4: Prescriptions by Excluded Providers
