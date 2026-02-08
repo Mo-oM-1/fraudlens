@@ -147,17 +147,28 @@ try:
         st.subheader("Alerts by Type")
 
         if not alerts.empty:
-            fig = px.pie(
-                alerts,
-                values='NB_ALERTS',
-                names='ALERT_TYPE',
+            # Aggregate by ALERT_TYPE (sum across risk tiers)
+            alerts_by_type = alerts.groupby('ALERT_TYPE').agg({
+                'NB_ALERTS': 'sum',
+                'TOTAL_EXPOSURE': 'sum'
+            }).reset_index().sort_values('NB_ALERTS', ascending=True)
+
+            fig = px.bar(
+                alerts_by_type,
+                y='ALERT_TYPE',
+                x='NB_ALERTS',
+                orientation='h',
                 color='ALERT_TYPE',
-                color_discrete_sequence=px.colors.qualitative.Set2
+                color_discrete_sequence=px.colors.qualitative.Set2,
+                labels={'NB_ALERTS': 'Number of Alerts', 'ALERT_TYPE': 'Alert Type'},
+                text='NB_ALERTS'
             )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_traces(textposition='outside')
             fig.update_layout(
+                showlegend=False,
                 plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)'
+                paper_bgcolor='rgba(0,0,0,0)',
+                yaxis_title=None
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
