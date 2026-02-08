@@ -1,7 +1,8 @@
 {{
     config(
-        materialized='table',
-        unique_key='prescription_id'
+        materialized='incremental',
+        unique_key='PRESCRIPTION_ID',
+        on_schema_change='append_new_columns'
     )
 }}
 
@@ -66,6 +67,10 @@ cleaned as (
 
     from prescriptions
     where PRSCRBR_NPI is not null and PRSCRBR_NPI != ''
+
+    {% if is_incremental() %}
+    and _LOAD_TIMESTAMP > (select max(_LOAD_TIMESTAMP) from {{ this }})
+    {% endif %}
 ),
 
 with_metrics as (

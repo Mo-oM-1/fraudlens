@@ -1,7 +1,8 @@
 {{
     config(
-        materialized='table',
-        unique_key='facility_id'
+        materialized='incremental',
+        unique_key='FACILITY_ID',
+        on_schema_change='append_new_columns'
     )
 }}
 
@@ -35,6 +36,9 @@ with hospice as (
         _LOAD_TIMESTAMP
     from {{ ref('stg_hospice') }}
     where CMS_CERTIFICATION_NUMBER is not null
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 home_health as (
@@ -60,6 +64,9 @@ home_health as (
         _LOAD_TIMESTAMP
     from {{ ref('stg_home_health_care') }}
     where CMS_CERTIFICATION_NUMBER is not null
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 ltch as (
@@ -85,6 +92,9 @@ ltch as (
         _LOAD_TIMESTAMP
     from {{ ref('stg_longterm_care_hospital') }}
     where CMS_CERTIFICATION_NUMBER is not null
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 nursing_home as (
@@ -110,6 +120,9 @@ nursing_home as (
         _LOAD_TIMESTAMP
     from {{ ref('stg_provider_information') }}
     where FEDERAL_PROVIDER_NUMBER is not null
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 all_facilities as (
