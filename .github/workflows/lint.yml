@@ -25,7 +25,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install sqlfluff==3.0.0 sqlfluff-templater-dbt==3.0.0 dbt-snowflake==1.7.0
+          pip install sqlfluff==3.0.0 sqlfluff-templater-dbt==3.0.0 dbt-snowflake==1.9.0
 
       - name: Create .sqlfluff config
         run: |
