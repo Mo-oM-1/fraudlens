@@ -1,0 +1,169 @@
+version: 2
+
+models:
+  - name: provider_360
+    description: "Complete provider profile combining all data sources - single source of truth"
+    columns:
+      - name: NPI
+        description: "National Provider Identifier - Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: ENTITY_TYPE
+        description: "Individual or Organization"
+        tests:
+          - accepted_values:
+              values: ['Individual', 'Organization', 'Unknown']
+      - name: IS_EXCLUDED
+        description: "True if provider is on LEIE exclusion list"
+        tests:
+          - not_null
+      - name: TOTAL_PAYMENT_AMOUNT
+        description: "Total pharma payments received"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: TOTAL_PRESCRIPTION_COST
+        description: "Total prescription costs"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: TOTAL_FINANCIAL_EXPOSURE
+        description: "Combined payment + prescription exposure"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+  - name: fraud_risk_score
+    description: "Composite fraud risk scoring for each provider (0-100 scale)"
+    columns:
+      - name: NPI
+        description: "National Provider Identifier - Primary key"
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('provider_360')
+              field: NPI
+      - name: FRAUD_RISK_SCORE
+        description: "Normalized risk score (0-100)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: RISK_TIER
+        description: "Risk classification tier"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'MINIMAL']
+      - name: IS_EXCLUDED
+        description: "True if provider is on LEIE exclusion list"
+        tests:
+          - not_null
+      - name: TOTAL_FINANCIAL_EXPOSURE
+        description: "Combined financial exposure"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+  - name: high_risk_alerts
+    description: "Actionable alerts for fraud investigation"
+    columns:
+      - name: ALERT_ID
+        description: "Unique alert identifier"
+        tests:
+          - unique
+          - not_null
+      - name: ALERT_TYPE
+        description: "Type of alert"
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - 'HIGH_RISK_SCORE'
+                - 'EXCLUDED_STILL_ACTIVE'
+                - 'PAYMENT_TO_EXCLUDED'
+                - 'PRESCRIPTION_BY_EXCLUDED'
+                - 'HIGH_BRAND_PRESCRIBER'
+      - name: NPI
+        description: "Provider NPI"
+        tests:
+          - not_null
+      - name: RISK_TIER
+        description: "Alert risk tier"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
+      - name: ALERT_STATUS
+        description: "Current status of the alert"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['PENDING', 'REVIEWED', 'DISMISSED', 'ESCALATED']
+      - name: PRIORITY_RANK
+        description: "Priority ranking (1 = highest)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 6
+
+  - name: payments_summary
+    description: "Aggregated payment metrics by provider"
+    columns:
+      - name: NPI
+        description: "National Provider Identifier - Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: TOTAL_PAYMENTS
+        description: "Total number of payments"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: TOTAL_PAYMENT_AMOUNT
+        description: "Total payment amount in USD"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: RECIPIENT_TIER
+        description: "Payment recipient tier"
+        tests:
+          - accepted_values:
+              values: ['MEGA_RECIPIENT', 'MAJOR_RECIPIENT', 'MODERATE_RECIPIENT', 'MINOR_RECIPIENT']
+
+  - name: prescriptions_summary
+    description: "Aggregated prescription metrics by provider"
+    columns:
+      - name: NPI
+        description: "National Provider Identifier - Primary key"
+        tests:
+          - unique
+          - not_null
+      - name: TOTAL_CLAIMS
+        description: "Total prescription claims"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: TOTAL_COST
+        description: "Total prescription cost"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: PCT_BRAND_CLAIMS
+        description: "Percentage of brand name claims"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
