@@ -1,27 +1,127 @@
-{{ config(materialized='table') }}
+{{
+    config(
+        materialized='table',
+        unique_key='npi'
+    )
+}}
 
-SELECT 
-  p.NPI,
-  -- Composite score 0-100 (doc) [file:14]
-  (COALESCE(e.IS_EXCLUDED_HIGH_RISK, 0)*40 +  -- Exclusion 40pts
-   COALESCE(pay.PCT_HIGH_RISK_PAYMENTS, 0)*20 + -- Payments 20pts
-   COALESCE(rx.PCT_BRAND_CLAIMS, 0)*20 +       -- Rx 20pts
-   CASE WHEN pay.NPI IS NOT NULL AND rx.NPI IS NOT NULL THEN 20 ELSE 0 END) AS fraud_risk_score,  -- Anomalies 20pts
-  
-  CASE 
-    WHEN fraud_risk_score >=70 THEN 'CRITICAL'
-    WHEN fraud_risk_score >=50 THEN 'HIGH'
-    WHEN fraud_risk_score >=30 THEN 'MEDIUM'
-    ELSE 'LOW'
-  END AS risk_tier,
-  
-  p.IS_EXCLUDED,
-  pay.TOTAL_PAYMENT_AMOUNT,
-  rx.TOTAL_PRESCRIPTION_COST,
-  CURRENT_TIMESTAMP() AS _loaded_at
+/*
+    Gold Fraud Risk Score
+    ---------------------
+    Composite fraud risk scoring for each provider.
+    Combines multiple risk signals into a single score.
 
-FROM {{ ref('provider_360') }} p
-LEFT JOIN payments_agg pay ON p.NPI = pay.NPI  -- Utilise tes silver
-LEFT JOIN prescriptions_agg rx ON p.NPI = rx.NPI
-LEFT JOIN excluded e ON p.NPI = e.NPI
-GROUP BY 1, p.IS_EXCLUDED, pay.TOTAL_PAYMENT_AMOUNT, rx.TOTAL_PRESCRIPTION_COST  -- Unique NPI
+    Scoring methodology:
+    - Base score: 0
+    - Each risk factor adds points
+    - Final score: 0-100 scale
+    - Higher = more suspicious
+*/
+
+with provider_360 as (
+    select * from {{ ref('provider_360') }}
+),
+
+risk_calculation as (
+    select
+        NPI,
+        FULL_NAME,
+        ORGANIZATION_NAME,
+        ENTITY_TYPE,
+        SPECIALTY,
+        STATE,
+
+        -- Start with base score of 0
+        0
+
+        -- EXCLUSION RISKS (High weight - 40 points max)
+        + case when IS_EXCLUDED then 25 else 0 end
+        + case when IS_EXCLUDED_HIGH_RISK then 15 else 0 end  -- Excluded but still active
+
+        -- PAYMENT RISKS (20 points max)
+        + case
+            when RECIPIENT_TIER = 'MEGA_RECIPIENT' then 10
+            when RECIPIENT_TIER = 'MAJOR_RECIPIENT' then 5
+            else 0
+          end
+        + case when PCT_HIGH_RISK_PAYMENTS >= 50 then 10 else PCT_HIGH_RISK_PAYMENTS / 10 end
+
+        -- PRESCRIPTION RISKS (20 points max)
+        + case when PCT_BRAND_CLAIMS >= 80 then 10 else PCT_BRAND_CLAIMS / 10 end
+        + case when TOTAL_HIGH_RISK_DRUGS >= 10 then 10 else TOTAL_HIGH_RISK_DRUGS end
+
+        -- ACTIVITY ANOMALIES (20 points max)
+        + case
+            when HAS_PHARMA_PAYMENTS and HAS_PRESCRIPTIONS then 10  -- Both activities
+            else 0
+          end
+        + case when IS_NPI_ACTIVE = false and (HAS_PHARMA_PAYMENTS or HAS_PRESCRIPTIONS) then 10 else 0 end
+
+        as RAW_RISK_SCORE,
+
+        -- Individual risk components for transparency
+        IS_EXCLUDED,
+        IS_EXCLUDED_HIGH_RISK,
+        RECIPIENT_TIER,
+        PCT_HIGH_RISK_PAYMENTS,
+        PCT_BRAND_CLAIMS,
+        TOTAL_HIGH_RISK_DRUGS,
+        HAS_PHARMA_PAYMENTS,
+        HAS_PRESCRIPTIONS,
+        IS_NPI_ACTIVE,
+        TOTAL_PAYMENT_AMOUNT,
+        TOTAL_PRESCRIPTION_COST,
+        TOTAL_FINANCIAL_EXPOSURE
+
+    from provider_360
+),
+
+final as (
+    select
+        NPI,
+        FULL_NAME,
+        ORGANIZATION_NAME,
+        ENTITY_TYPE,
+        SPECIALTY,
+        STATE,
+
+        -- Normalized score (0-100)
+        LEAST(ROUND(RAW_RISK_SCORE, 0), 100) as FRAUD_RISK_SCORE,
+
+        -- Risk tier
+        case
+            when RAW_RISK_SCORE >= 70 then 'CRITICAL'
+            when RAW_RISK_SCORE >= 50 then 'HIGH'
+            when RAW_RISK_SCORE >= 30 then 'MEDIUM'
+            when RAW_RISK_SCORE >= 10 then 'LOW'
+            else 'MINIMAL'
+        end as RISK_TIER,
+
+        -- Risk flags (for filtering)
+        IS_EXCLUDED,
+        IS_EXCLUDED_HIGH_RISK,
+        case when PCT_BRAND_CLAIMS >= 80 then true else false end as IS_HIGH_BRAND_PRESCRIBER,
+        case when RECIPIENT_TIER in ('MEGA_RECIPIENT', 'MAJOR_RECIPIENT') then true else false end as IS_MAJOR_PAYMENT_RECIPIENT,
+
+        -- Financial metrics
+        TOTAL_PAYMENT_AMOUNT,
+        TOTAL_PRESCRIPTION_COST,
+        TOTAL_FINANCIAL_EXPOSURE,
+
+        -- Component scores (for analysis)
+        RECIPIENT_TIER,
+        PCT_HIGH_RISK_PAYMENTS,
+        PCT_BRAND_CLAIMS,
+        TOTAL_HIGH_RISK_DRUGS,
+
+        -- Activity
+        HAS_PHARMA_PAYMENTS,
+        HAS_PRESCRIPTIONS,
+        IS_NPI_ACTIVE,
+
+        current_timestamp() as _loaded_at
+
+    from risk_calculation
+)
+
+select * from final
