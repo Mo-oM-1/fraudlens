@@ -26,7 +26,7 @@ prescriptions_summary as (
 ),
 
 excluded as (
-    select
+    select distinct
         NPI,
         EXCLUSION_REASON,
         EXCLUSION_DATE,

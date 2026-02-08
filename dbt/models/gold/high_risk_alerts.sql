@@ -22,7 +22,7 @@ fraud_scores as (
 ),
 
 excluded_providers as (
-    select ep.*
+    select distinct ep.*
     from {{ ref('excluded_providers') }} ep
     inner join provider_360 p360 on ep.NPI = p360.NPI  -- Only include if in provider_360
     where ep.IS_CURRENTLY_EXCLUDED = true
