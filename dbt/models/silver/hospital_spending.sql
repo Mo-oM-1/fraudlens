@@ -13,6 +13,10 @@
     Identifies hospitals with spending anomalies.
 */
 
+{% if is_incremental() %}
+{% set max_loaded_at = run_query("select max(_loaded_at) from " ~ this).columns[0].values()[0] %}
+{% endif %}
+
 with spending as (
     select * from {{ ref('stg_medicare_hospital_spending') }}
 ),
@@ -57,9 +61,8 @@ cleaned as (
     from spending
     where STATE is not null
       and FACILITY_ID is not null  -- Filter out null CCNs
-
     {% if is_incremental() %}
-      and _LOAD_TIMESTAMP > (select max(_LOAD_TIMESTAMP) from {{ this }})
+      and _LOAD_TIMESTAMP > '{{ max_loaded_at }}'
     {% endif %}
 ),
 

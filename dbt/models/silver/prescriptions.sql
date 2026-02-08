@@ -13,6 +13,10 @@
     Key metrics: prescribing volume, cost per prescription, outlier detection.
 */
 
+{% if is_incremental() %}
+{% set max_loaded_at = run_query("select max(_loaded_at) from " ~ this).columns[0].values()[0] %}
+{% endif %}
+
 with prescriptions as (
     select * from {{ ref('stg_medicare_part_d_prescribers') }}
 ),
@@ -67,9 +71,8 @@ cleaned as (
 
     from prescriptions
     where PRSCRBR_NPI is not null and PRSCRBR_NPI != ''
-
     {% if is_incremental() %}
-    and _LOAD_TIMESTAMP > (select max(_LOAD_TIMESTAMP) from {{ this }})
+      and _LOAD_TIMESTAMP > '{{ max_loaded_at }}'
     {% endif %}
 ),
 
