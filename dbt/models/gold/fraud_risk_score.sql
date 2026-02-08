@@ -76,7 +76,7 @@ risk_calculation as (
     from provider_360
 ),
 
-final as (
+scored as (
     select
         NPI,
         FULL_NAME,
@@ -85,10 +85,7 @@ final as (
         SPECIALTY,
         STATE,
 
-        -- Normalized score (0-100)
         LEAST(ROUND(RAW_RISK_SCORE, 0), 100) as FRAUD_RISK_SCORE,
-
-        -- Risk tier
         case
             when RAW_RISK_SCORE >= 70 then 'CRITICAL'
             when RAW_RISK_SCORE >= 50 then 'HIGH'
@@ -97,31 +94,36 @@ final as (
             else 'MINIMAL'
         end as RISK_TIER,
 
-        -- Risk flags (for filtering)
         IS_EXCLUDED,
         IS_EXCLUDED_HIGH_RISK,
         case when PCT_BRAND_CLAIMS >= 80 then true else false end as IS_HIGH_BRAND_PRESCRIBER,
         case when RECIPIENT_TIER in ('MEGA_RECIPIENT', 'MAJOR_RECIPIENT') then true else false end as IS_MAJOR_PAYMENT_RECIPIENT,
 
-        -- Financial metrics
         TOTAL_PAYMENT_AMOUNT,
         TOTAL_PRESCRIPTION_COST,
         TOTAL_FINANCIAL_EXPOSURE,
 
-        -- Component scores (for analysis)
         RECIPIENT_TIER,
         PCT_HIGH_RISK_PAYMENTS,
         PCT_BRAND_CLAIMS,
         TOTAL_HIGH_RISK_DRUGS,
 
-        -- Activity
         HAS_PHARMA_PAYMENTS,
         HAS_PRESCRIPTIONS,
-        IS_NPI_ACTIVE,
-
-        current_timestamp() as _loaded_at
-
+        IS_NPI_ACTIVE
     from risk_calculation
+),
+
+final as (
+    select *
+    from scored
+    qualify row_number() over (
+        partition by NPI
+        order by FRAUD_RISK_SCORE desc, TOTAL_FINANCIAL_EXPOSURE desc
+    ) = 1
 )
 
-select * from final
+select
+    *,
+    current_timestamp() as _loaded_at
+from final

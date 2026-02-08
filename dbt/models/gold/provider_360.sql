@@ -142,6 +142,15 @@ final as (
     left join payments_summary pay on p.NPI = pay.NPI
     left join prescriptions_summary rx on p.NPI = rx.NPI
     left join excluded e on p.NPI = e.NPI
+),
+
+final as (
+    select *
+    from joined
+    qualify row_number() over (partition by NPI order by TOTAL_FINANCIAL_EXPOSURE desc) = 1
 )
 
-select * from final
+select
+    *,
+    current_timestamp() as _loaded_at
+from final
