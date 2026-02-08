@@ -1,5 +1,5 @@
 """
-Snowflake connection utility for the dashboard.
+Snowflake connection utility for the Streamlit dashboard.
 """
 import streamlit as st
 import snowflake.connector
