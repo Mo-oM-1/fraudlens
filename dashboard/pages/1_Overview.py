@@ -26,7 +26,8 @@ try:
     risk_dist = get_risk_distribution()
     alerts = get_alerts_summary()
 
-    # Main KPIs Row
+    # Main KPIs Row 1 - Provider counts
+    st.subheader("👥 Provider Metrics")
     col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
@@ -66,6 +67,44 @@ try:
             delta="Critical",
             delta_color="inverse",
             help="Excluded providers still with activity"
+        )
+
+    st.divider()
+
+    # Main KPIs Row 2 - Financial metrics
+    st.subheader("💰 Financial Metrics")
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        total_pharma = kpis['TOTAL_PHARMA_PAYMENTS'].iloc[0] or 0
+        st.metric(
+            label="Total Pharma Payments",
+            value=f"${total_pharma:,.0f}",
+            help="Sum of all Open Payments received"
+        )
+
+    with col2:
+        total_rx = kpis['TOTAL_PRESCRIPTION_COSTS'].iloc[0] or 0
+        st.metric(
+            label="Total Prescription Costs",
+            value=f"${total_rx:,.0f}",
+            help="Sum of all Medicare Part D costs"
+        )
+
+    with col3:
+        avg_brand = kpis['AVG_BRAND_PCT'].iloc[0] or 0
+        st.metric(
+            label="Avg Brand Rx %",
+            value=f"{avg_brand:.1f}%",
+            help="Average brand vs generic prescription ratio"
+        )
+
+    with col4:
+        high_brand = kpis['HIGH_BRAND_PRESCRIBERS'].iloc[0] or 0
+        st.metric(
+            label="⚠️ High Brand Prescribers",
+            value=f"{high_brand:,.0f}",
+            help="Providers with ≥80% brand prescriptions (kickback risk)"
         )
 
     st.divider()
