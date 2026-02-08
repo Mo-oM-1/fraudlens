@@ -28,7 +28,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install dbt-snowflake==1.7.0
-          dbt deps --profiles-dir $HOME/.dbt
 
       - name: Setup Snowflake private key
         run: |
