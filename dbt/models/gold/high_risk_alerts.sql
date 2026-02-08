@@ -14,6 +14,7 @@
 
 with provider_360 as (
     select NPI from {{ ref('provider_360') }}
+    where NPI is not null
 ),
 
 fraud_scores as (

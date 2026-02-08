@@ -14,6 +14,7 @@
 
 with provider as (
     select * from {{ ref('provider') }}
+    qualify row_number() over (partition by NPI order by NPI_ENUMERATION_DATE desc) = 1
 ),
 
 payments_summary as (
