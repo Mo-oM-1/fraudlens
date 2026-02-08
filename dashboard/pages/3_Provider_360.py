@@ -207,14 +207,14 @@ if search_term and (search_button or len(search_term) >= 3):
                     st.divider()
                     st.subheader("📈 Risk Assessment")
 
-                    # Get fraud score if available
+                    # Get fraud score if available (parameterized query)
                     from utils import run_query
-                    score_query = f"""
+                    score_query = """
                     SELECT FRAUD_RISK_SCORE, RISK_TIER
                     FROM FRAUDLENS_DB.GOLD.FRAUD_RISK_SCORE
-                    WHERE NPI = '{selected_npi}'
+                    WHERE NPI = %s
                     """
-                    score_data = run_query(score_query)
+                    score_data = run_query(score_query, (selected_npi,))
 
                     if not score_data.empty:
                         score = score_data.iloc[0]['FRAUD_RISK_SCORE']

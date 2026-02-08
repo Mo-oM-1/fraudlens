@@ -4,11 +4,13 @@ Fraud Alerts Page - List and filter alerts
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import io
+from datetime import datetime
 import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import get_alerts_list, get_alerts_summary
+from utils import get_alerts_list, get_alerts_summary, run_query
 
 st.set_page_config(
     page_title="Fraud Alerts",
@@ -19,33 +21,103 @@ st.set_page_config(
 st.title("🚨 Fraud Alerts")
 st.markdown("### Actionable alerts requiring investigation")
 
+
+@st.cache_data(ttl=3600)
+def get_filter_options():
+    """Get unique states and risk tiers for filters."""
+    states_query = """
+    SELECT DISTINCT STATE FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
+    WHERE STATE IS NOT NULL ORDER BY STATE
+    """
+    risk_tiers_query = """
+    SELECT DISTINCT RISK_TIER FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
+    WHERE RISK_TIER IS NOT NULL
+    """
+    states = run_query(states_query)
+    risk_tiers = run_query(risk_tiers_query)
+    return (
+        states['STATE'].tolist() if not states.empty else [],
+        risk_tiers['RISK_TIER'].tolist() if not risk_tiers.empty else []
+    )
+
+
 try:
-    # Get alerts summary for filter options
+    # Get alerts summary and filter options
     alerts_summary = get_alerts_summary()
     alert_types = ['All'] + alerts_summary['ALERT_TYPE'].unique().tolist() if not alerts_summary.empty else ['All']
+    states_list, risk_tiers_list = get_filter_options()
 
-    # Filters
-    col1, col2, col3 = st.columns([2, 2, 1])
+    # Filters - expanded
+    st.subheader("Filters")
+    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
 
     with col1:
         selected_type = st.selectbox(
-            "Filter by Alert Type",
+            "Alert Type",
             options=alert_types,
             index=0
         )
 
     with col2:
-        limit = st.slider("Number of alerts to display", 10, 500, 100)
+        selected_states = st.multiselect(
+            "States",
+            options=states_list,
+            default=[],
+            placeholder="All states"
+        )
 
     with col3:
-        st.write("")  # Spacer
+        selected_tiers = st.multiselect(
+            "Risk Tier",
+            options=risk_tiers_list,
+            default=[],
+            placeholder="All tiers"
+        )
+
+    col1, col2, col3 = st.columns([2, 2, 1])
+    with col1:
+        limit = st.slider("Number of alerts to display", 10, 500, 100)
+
+    with col2:
+        st.write("")
+
+    with col3:
+        st.write("")
         refresh = st.button("🔄 Refresh", use_container_width=True)
 
     st.divider()
 
-    # Load alerts
+    # Load alerts with additional filters
     filter_type = None if selected_type == 'All' else selected_type
-    alerts = get_alerts_list(alert_type=filter_type, limit=limit)
+
+    # Build filtered query
+    base_query = """
+    SELECT
+        ALERT_ID, ALERT_TYPE, NPI, PROVIDER_NAME, SPECIALTY, STATE,
+        RISK_SCORE, RISK_TIER, ALERT_DESCRIPTION, FINANCIAL_EXPOSURE, PRIORITY_RANK
+    FROM FRAUDLENS_DB.GOLD.HIGH_RISK_ALERTS
+    WHERE 1=1
+    """
+    params = []
+
+    if filter_type:
+        base_query += " AND ALERT_TYPE = %s"
+        params.append(filter_type)
+
+    if selected_states:
+        placeholders = ", ".join(["%s"] * len(selected_states))
+        base_query += f" AND STATE IN ({placeholders})"
+        params.extend(selected_states)
+
+    if selected_tiers:
+        placeholders = ", ".join(["%s"] * len(selected_tiers))
+        base_query += f" AND RISK_TIER IN ({placeholders})"
+        params.extend(selected_tiers)
+
+    base_query += " ORDER BY PRIORITY_RANK, RISK_SCORE DESC LIMIT %s"
+    params.append(limit)
+
+    alerts = run_query(base_query, tuple(params)) if params else run_query(base_query)
 
     if not alerts.empty:
         # Summary metrics
@@ -159,14 +231,34 @@ try:
             height=500
         )
 
-        # Download button
-        csv = alerts.to_csv(index=False)
-        st.download_button(
-            label="📥 Download Alerts CSV",
-            data=csv,
-            file_name="fraud_alerts.csv",
-            mime="text/csv"
-        )
+        # Download buttons
+        st.subheader("📥 Export")
+        col1, col2, col3 = st.columns([1, 1, 2])
+
+        with col1:
+            csv = alerts.to_csv(index=False)
+            st.download_button(
+                label="Download CSV",
+                data=csv,
+                file_name=f"fraud_alerts_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
+        with col2:
+            # Excel export
+            excel_buffer = io.BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                alerts.to_excel(writer, index=False, sheet_name='Alerts')
+            excel_data = excel_buffer.getvalue()
+
+            st.download_button(
+                label="Download Excel",
+                data=excel_data,
+                file_name=f"fraud_alerts_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
 
     else:
         st.info("No alerts found with the current filters.")

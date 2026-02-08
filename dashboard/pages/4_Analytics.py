@@ -1,5 +1,6 @@
 """
 Analytics Page - Charts and trends
+With lazy loading for better performance.
 """
 import streamlit as st
 import plotly.express as px
@@ -25,15 +26,28 @@ st.set_page_config(
 st.title("📊 Analytics & Insights")
 st.markdown("### Data visualizations and trends")
 
+# Cache data with appropriate TTL (24h for analytics)
+@st.cache_data(ttl=86400)
+def load_geographic_data():
+    return get_payments_by_state()
+
+@st.cache_data(ttl=86400)
+def load_payment_data():
+    return get_top_recipients()
+
+@st.cache_data(ttl=86400)
+def load_risk_data():
+    return get_risk_distribution()
+
 # Tabs for different analytics views
 tab1, tab2, tab3, tab4 = st.tabs(["🗺️ Geographic", "💰 Payments", "💊 Prescriptions", "⚠️ Risk Analysis"])
 
-# Geographic Analysis
+# Geographic Analysis - Lazy loaded
 with tab1:
     st.subheader("Geographic Distribution")
 
     try:
-        payments_by_state = get_payments_by_state()
+        payments_by_state = load_geographic_data()
 
         if not payments_by_state.empty:
             # Convert numeric columns
@@ -102,12 +116,12 @@ with tab1:
     except Exception as e:
         st.error(f"Error loading geographic data: {str(e)}")
 
-# Payments Analysis
+# Payments Analysis - Lazy loaded
 with tab2:
     st.subheader("Payment Analysis")
 
     try:
-        top_recipients = get_top_recipients()
+        top_recipients = load_payment_data()
 
         if not top_recipients.empty:
             col1, col2 = st.columns(2)
@@ -289,12 +303,12 @@ with tab3:
     except Exception as e:
         st.error(f"Error loading prescription data: {str(e)}")
 
-# Risk Analysis
+# Risk Analysis - Lazy loaded
 with tab4:
     st.subheader("Risk Analysis")
 
     try:
-        risk_dist = get_risk_distribution()
+        risk_dist = load_risk_data()
 
         if not risk_dist.empty:
             col1, col2 = st.columns(2)
