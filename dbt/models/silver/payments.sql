@@ -1,7 +1,8 @@
 {{
     config(
         materialized='table',
-        unique_key='PAYMENT_ID'
+        unique_key='PAYMENT_ID',
+        cluster_by=['STATE', 'NPI', 'PAYMENT_CATEGORY']
     )
 }}
 
