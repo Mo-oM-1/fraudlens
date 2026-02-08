@@ -32,7 +32,7 @@ excluded_providers as (
 payments as (
     select pay.*
     from {{ ref('payments') }} pay
-    inner join provider_360 p360 on pay.NPI = p360.NPI  -- Only include if in provider_360
+    inner join {{ ref('provider_360') }} p360 on pay.NPI = p360.NPI  -- Only include if in provider_360
     where pay.IS_RECIPIENT_EXCLUDED = true
     and pay.NPI is not null
 ),
@@ -40,7 +40,7 @@ payments as (
 prescriptions as (
     select rx.*
     from {{ ref('prescriptions') }} rx
-    inner join provider_360 p360 on rx.NPI = p360.NPI  -- Only include if in provider_360
+    inner join {{ ref('provider_360') }} p360 on rx.NPI = p360.NPI  -- Only include if in provider_360
     where rx.IS_PRESCRIBER_EXCLUDED = true
 ),
 
