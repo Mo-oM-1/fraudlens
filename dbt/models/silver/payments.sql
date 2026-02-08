@@ -1,7 +1,8 @@
 {{
     config(
-        materialized='table',
-        unique_key='payment_id'
+        materialized='incremental',
+        unique_key='PAYMENT_ID',
+        on_schema_change='append_new_columns'
     )
 }}
 
@@ -36,9 +37,13 @@ with general_payments as (
         null as STUDY_NAME,
         null as CLINICAL_TRIAL_ID,
         null as INVESTMENT_AMOUNT,
-        null as INTEREST_VALUE
+        null as INTEREST_VALUE,
+        _LOAD_TIMESTAMP
     from {{ ref('stg_open_payments_general') }}
     where "Record_ID" is not null
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 research_payments as (
@@ -63,9 +68,13 @@ research_payments as (
         "Name_of_Study" as STUDY_NAME,
         "ClinicalTrials_Gov_Identifier" as CLINICAL_TRIAL_ID,
         null as INVESTMENT_AMOUNT,
-        null as INTEREST_VALUE
+        null as INTEREST_VALUE,
+        _LOAD_TIMESTAMP
     from {{ ref('stg_open_payments_research') }}
     where "Record_ID" is not null
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 ownership_payments as (
@@ -90,9 +99,13 @@ ownership_payments as (
         null as STUDY_NAME,
         null as CLINICAL_TRIAL_ID,
         try_to_number("Total_Amount_Invested_USDollars", 18, 2) as INVESTMENT_AMOUNT,
-        "Value_of_Interest" as INTEREST_VALUE
+        "Value_of_Interest" as INTEREST_VALUE,
+        _LOAD_TIMESTAMP
     from {{ ref('stg_open_payments_ownership') }}
     where "Record_ID" is not null
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_loaded_at) from {{ this }})
+    {% endif %}
 ),
 
 all_payments as (

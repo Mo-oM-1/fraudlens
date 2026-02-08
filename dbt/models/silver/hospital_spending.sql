@@ -1,7 +1,8 @@
 {{
     config(
-        materialized='table',
-        unique_key='spending_id'
+        materialized='incremental',
+        unique_key='SPENDING_ID',
+        on_schema_change='append_new_columns'
     )
 }}
 
@@ -56,6 +57,10 @@ cleaned as (
     from spending
     where STATE is not null
       and FACILITY_ID is not null  -- Filter out null CCNs
+
+    {% if is_incremental() %}
+      and _LOAD_TIMESTAMP > (select max(_LOAD_TIMESTAMP) from {{ this }})
+    {% endif %}
 ),
 
 with_benchmarks as (
