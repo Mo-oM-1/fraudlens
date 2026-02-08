@@ -28,6 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install dbt-snowflake==1.7.0
+          dbt deps --profiles-dir $HOME/.dbt
 
       - name: Setup Snowflake private key
         run: |
@@ -69,7 +70,6 @@ jobs:
       - name: Run full refresh and tests
         working-directory: ./dbt
         run: |
-          dbt deps --profiles-dir $HOME/.dbt
           dbt clean --profiles-dir $HOME/.dbt
           dbt run --full-refresh --select gold --profiles-dir $HOME/.dbt
           dbt test --select gold --profiles-dir $HOME/.dbt
