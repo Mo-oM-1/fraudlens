@@ -70,7 +70,7 @@ jobs:
         working-directory: ./dbt
         run: |
           dbt clean --profiles-dir $HOME/.dbt
-          dbt run --full-refresh +gold --profiles-dir $HOME/.dbt
+          dbt run --full-refresh --select gold --profiles-dir $HOME/.dbt
           dbt test --select gold --profiles-dir $HOME/.dbt
 
       - name: Generate docs
