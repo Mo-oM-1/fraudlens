@@ -214,3 +214,38 @@ def get_excluded_with_activity():
     LIMIT 100
     """
     return run_query(query)
+
+
+def get_provider_ml_features(npi: str):
+    """Get ML features for a specific provider."""
+    query = """
+    SELECT
+        NPI,
+        PEER_COUNT,
+        PAYMENT_ZSCORE,
+        RX_COST_ZSCORE,
+        BRAND_PCT_ZSCORE,
+        CLAIMS_ZSCORE,
+        PAYMENT_TO_RX_RATIO,
+        AVG_COST_PER_CLAIM,
+        PAYMENT_VS_PEER_RATIO,
+        UNIQUE_DRUGS_PRESCRIBED,
+        DRUG_CONCENTRATION_HHI,
+        TOP_DRUG_PCT,
+        TOP_3_DRUGS_PCT,
+        IS_CONCENTRATED_PRESCRIBER,
+        UNIQUE_PHARMA_COMPANIES,
+        TOP_PAYER_PCT,
+        PCT_GENERAL_PAYMENTS,
+        PCT_RESEARCH_PAYMENTS,
+        IS_SINGLE_PAYER_RECIPIENT,
+        PAYMENT_PERCENTILE,
+        RX_COST_PERCENTILE,
+        BRAND_PCT_PERCENTILE,
+        CLAIMS_PERCENTILE,
+        IS_MULTI_DIMENSION_OUTLIER,
+        ANOMALY_FLAG_COUNT
+    FROM FRAUDLENS_DB.GOLD.PROVIDER_ML_FEATURES
+    WHERE NPI = %s
+    """
+    return run_query(query, (npi,))

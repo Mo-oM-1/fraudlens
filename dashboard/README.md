@@ -6,8 +6,25 @@ Interactive Streamlit dashboard for healthcare fraud detection and provider risk
 
 - **Overview**: Executive KPIs and risk distribution
 - **Fraud Alerts**: Actionable alerts with filtering and export
-- **Provider 360°**: Complete provider investigation view
+- **Provider 360°**: Complete provider investigation view with **ML Analysis**
 - **Analytics**: Geographic, payment, and prescription analytics
+
+### ML Analysis (Provider 360)
+
+Section d'analyse avancée utilisant les features ML pour détecter les anomalies :
+
+| Onglet | Contenu | Utilité |
+|--------|---------|---------|
+| **Z-Scores** | Radar chart + métriques vs peers | Identifier les outliers statistiques (z > 2) |
+| **Concentration** | Drug HHI, pharma diversity | Détecter les prescripteurs concentrés sur peu de médicaments |
+| **Percentiles** | Bar chart position vs peers | Visualiser rapidement les extrêmes (> 90e percentile) |
+
+**Indicateurs d'anomalie** :
+- Bandeau vert : Aucun flag d'anomalie
+- Bandeau orange : 1-2 flags d'anomalie
+- Bandeau rouge : 3+ flags ou multi-dimension outlier
+
+**Quand investiguer** : Un provider avec plusieurs flags d'anomalie (z-scores élevés, prescriptions concentrées, single pharma payer) doit être analysé plus en détail.
 
 ## 🚀 Quick Start
 

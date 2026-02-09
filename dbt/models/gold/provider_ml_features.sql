@@ -20,9 +20,13 @@
 */
 
 -- Get provider base metrics
+-- Note: SPECIALTY may be NULL, so we use COALESCE for peer grouping
 with provider_360 as (
-    select * from {{ ref('provider_360') }}
-    where SPECIALTY is not null and STATE is not null
+    select
+        *,
+        COALESCE(SPECIALTY, 'UNKNOWN') as SPECIALTY_GROUP,
+        COALESCE(STATE, 'UNKNOWN') as STATE_GROUP
+    from {{ ref('provider_360') }}
 ),
 
 -- Get detailed prescription data for drug concentration
@@ -46,11 +50,12 @@ payments as (
     where NPI is not null
 ),
 
--- Calculate peer statistics (by specialty + state)
+-- Calculate peer statistics (by specialty_group + state_group)
+-- Using COALESCE'd groups to handle NULL values
 peer_stats as (
     select
-        SPECIALTY,
-        STATE,
+        SPECIALTY_GROUP,
+        STATE_GROUP,
         COUNT(*) as PEER_COUNT,
 
         -- Payment stats
@@ -73,7 +78,7 @@ peer_stats as (
 
     from provider_360
     where TOTAL_PAYMENT_AMOUNT > 0 or TOTAL_PRESCRIPTION_COST > 0
-    group by SPECIALTY, STATE
+    group by SPECIALTY_GROUP, STATE_GROUP
     having COUNT(*) >= 5  -- Need at least 5 peers for meaningful stats
 ),
 
@@ -139,34 +144,34 @@ pharma_diversity as (
     group by NPI
 ),
 
--- Calculate percentile rankings within specialty
+-- Calculate percentile rankings within specialty_group + state_group
 provider_percentiles as (
     select
         NPI,
-        SPECIALTY,
-        STATE,
+        SPECIALTY_GROUP,
+        STATE_GROUP,
 
         -- Payment percentile (0-100, higher = more payments)
         PERCENT_RANK() OVER (
-            PARTITION BY SPECIALTY, STATE
+            PARTITION BY SPECIALTY_GROUP, STATE_GROUP
             ORDER BY TOTAL_PAYMENT_AMOUNT
         ) * 100 as PAYMENT_PERCENTILE,
 
         -- Prescription cost percentile
         PERCENT_RANK() OVER (
-            PARTITION BY SPECIALTY, STATE
+            PARTITION BY SPECIALTY_GROUP, STATE_GROUP
             ORDER BY TOTAL_PRESCRIPTION_COST
         ) * 100 as RX_COST_PERCENTILE,
 
         -- Brand % percentile
         PERCENT_RANK() OVER (
-            PARTITION BY SPECIALTY, STATE
+            PARTITION BY SPECIALTY_GROUP, STATE_GROUP
             ORDER BY PCT_BRAND_CLAIMS
         ) * 100 as BRAND_PCT_PERCENTILE,
 
         -- Claims volume percentile
         PERCENT_RANK() OVER (
-            PARTITION BY SPECIALTY, STATE
+            PARTITION BY SPECIALTY_GROUP, STATE_GROUP
             ORDER BY TOTAL_PRESCRIPTION_CLAIMS
         ) * 100 as CLAIMS_PERCENTILE
 
@@ -191,7 +196,7 @@ final as (
         p.IS_EXCLUDED,
 
         -- Peer context
-        ps.PEER_COUNT,
+        COALESCE(ps.PEER_COUNT, 0) as PEER_COUNT,
 
         -- Z-SCORES (how many std devs from peer average)
         case
@@ -286,7 +291,7 @@ final as (
         current_timestamp() as _loaded_at
 
     from provider_360 p
-    left join peer_stats ps on p.SPECIALTY = ps.SPECIALTY and p.STATE = ps.STATE
+    left join peer_stats ps on p.SPECIALTY_GROUP = ps.SPECIALTY_GROUP and p.STATE_GROUP = ps.STATE_GROUP
     left join drug_concentration dc on p.NPI = dc.NPI
     left join pharma_diversity pd on p.NPI = pd.NPI
     left join provider_percentiles pp on p.NPI = pp.NPI

@@ -87,6 +87,21 @@ master_dag (Orchestrateur)
 | `high_risk_alerts` | Alertes actionnables (5 types) |
 | `payments_summary` | Agrégations paiements pharma |
 | `prescriptions_summary` | Agrégations prescriptions |
+| `provider_ml_features` | Features ML pour détection d'anomalies |
+
+### ML Features (provider_ml_features)
+
+Modèle avancé de feature engineering pour la détection de fraude :
+
+| Feature | Description | Seuil Anomalie |
+|---------|-------------|----------------|
+| **Z-Scores** | Comparaison vs peers (par état) | z > 2 = outlier |
+| **Drug HHI** | Concentration des prescriptions (Herfindahl-Hirschman Index) | HHI > 2500 = concentré |
+| **Pharma Diversity** | Nombre de compagnies pharma payeuses | 1 seule = suspect |
+| **Percentiles** | Ranking vs peers (0-100) | > 90e = extrême |
+| **Anomaly Flags** | Compteur de signaux d'alerte (0-6) | >= 2 = investigation |
+
+**Utilité** : Ces features permettent d'identifier les providers statistiquement anormaux par rapport à leurs pairs, même sans labels de fraude explicites. Un provider avec plusieurs flags d'anomalie mérite une investigation approfondie.
 
 > 📄 **Documentation** : [Data Modeling](docs/DataModeling_doc.pdf) | [dbt Models](docs/DBT_doc.pdf)
 
@@ -100,8 +115,17 @@ Dashboard interactif pour la visualisation et l'investigation des fraudes.
 |------|-----------------|
 | **Overview** | 9 KPIs exécutifs, distribution des risques, alertes |
 | **Fraud Alerts** | Liste filtrable, export CSV/Excel |
-| **Provider 360** | Recherche NPI, profil complet, risk gauge |
+| **Provider 360** | Recherche NPI, profil complet, risk gauge, **ML Analysis** |
 | **Analytics** | Cartes géographiques, tendances, distributions |
+
+### ML Analysis (Provider 360)
+
+Nouvelle section d'analyse ML pour chaque provider :
+
+- **Z-Scores** : Radar chart comparant le provider à ses peers (seuil outlier = 2)
+- **Concentration** : Drug HHI, diversité pharma, top drug %
+- **Percentiles** : Ranking vs peers avec code couleur (vert/jaune/rouge)
+- **Ratios financiers** : Payment/Rx, Cost/Claim, vs Peer Average
 
 ### Lancer en local
 

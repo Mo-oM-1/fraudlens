@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import search_providers, get_provider_details, get_provider_alerts
+from utils import search_providers, get_provider_details, get_provider_alerts, get_provider_ml_features
 from utils.theme import render_theme_toggle, apply_theme_css
 
 st.set_page_config(
@@ -259,6 +259,187 @@ if search_term and (search_button or len(search_term) >= 3):
                             st.plotly_chart(fig, use_container_width=True)
                     else:
                         st.info("No risk score available for this provider")
+
+                    # ML Analysis Section
+                    st.divider()
+                    st.subheader("🤖 ML Analysis")
+
+                    ml_features = get_provider_ml_features(selected_npi)
+
+                    if not ml_features.empty:
+                        ml = ml_features.iloc[0]
+
+                        # Anomaly summary
+                        anomaly_count = ml.get('ANOMALY_FLAG_COUNT', 0) or 0
+                        is_outlier = ml.get('IS_MULTI_DIMENSION_OUTLIER', False)
+
+                        if anomaly_count >= 3 or is_outlier:
+                            st.error(f"⚠️ **{anomaly_count} anomaly flags detected** - Multi-dimension outlier: {'Yes' if is_outlier else 'No'}")
+                        elif anomaly_count >= 1:
+                            st.warning(f"⚡ **{anomaly_count} anomaly flag(s) detected**")
+                        else:
+                            st.success("✅ No anomaly flags")
+
+                        # Tabs for different ML views
+                        ml_tab1, ml_tab2, ml_tab3 = st.tabs(["Z-Scores", "Concentration", "Percentiles"])
+
+                        with ml_tab1:
+                            st.markdown("#### Peer Comparison (Z-Scores)")
+                            st.caption(f"Compared to {ml.get('PEER_COUNT', 0)} peers in same state")
+
+                            # Radar chart for z-scores
+                            z_scores = {
+                                'Payment': ml.get('PAYMENT_ZSCORE', 0) or 0,
+                                'Rx Cost': ml.get('RX_COST_ZSCORE', 0) or 0,
+                                'Brand %': ml.get('BRAND_PCT_ZSCORE', 0) or 0,
+                                'Claims': ml.get('CLAIMS_ZSCORE', 0) or 0
+                            }
+
+                            categories = list(z_scores.keys())
+                            values = list(z_scores.values())
+
+                            fig_radar = go.Figure()
+
+                            # Add threshold lines
+                            fig_radar.add_trace(go.Scatterpolar(
+                                r=[2, 2, 2, 2, 2],
+                                theta=categories + [categories[0]],
+                                fill=None,
+                                mode='lines',
+                                line=dict(color='red', dash='dash'),
+                                name='Outlier threshold (z=2)'
+                            ))
+
+                            fig_radar.add_trace(go.Scatterpolar(
+                                r=values + [values[0]],
+                                theta=categories + [categories[0]],
+                                fill='toself',
+                                fillcolor='rgba(31, 119, 180, 0.3)',
+                                line=dict(color='rgb(31, 119, 180)'),
+                                name='Provider Z-Scores'
+                            ))
+
+                            fig_radar.update_layout(
+                                polar=dict(
+                                    radialaxis=dict(visible=True, range=[-2, max(5, max(values) + 1)])
+                                ),
+                                showlegend=True,
+                                height=350
+                            )
+                            st.plotly_chart(fig_radar, use_container_width=True)
+
+                            # Z-score metrics
+                            col1, col2, col3, col4 = st.columns(4)
+                            with col1:
+                                z_pay = z_scores['Payment']
+                                st.metric("Payment Z-Score", f"{z_pay:.2f}",
+                                         delta="Outlier" if z_pay > 2 else None,
+                                         delta_color="inverse" if z_pay > 2 else "off")
+                            with col2:
+                                z_rx = z_scores['Rx Cost']
+                                st.metric("Rx Cost Z-Score", f"{z_rx:.2f}",
+                                         delta="Outlier" if z_rx > 2 else None,
+                                         delta_color="inverse" if z_rx > 2 else "off")
+                            with col3:
+                                z_brand = z_scores['Brand %']
+                                st.metric("Brand % Z-Score", f"{z_brand:.2f}",
+                                         delta="Outlier" if z_brand > 2 else None,
+                                         delta_color="inverse" if z_brand > 2 else "off")
+                            with col4:
+                                z_claims = z_scores['Claims']
+                                st.metric("Claims Z-Score", f"{z_claims:.2f}",
+                                         delta="Outlier" if z_claims > 2 else None,
+                                         delta_color="inverse" if z_claims > 2 else "off")
+
+                        with ml_tab2:
+                            st.markdown("#### Drug & Pharma Concentration")
+
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+                                st.markdown("**Drug Prescribing**")
+                                hhi = ml.get('DRUG_CONCENTRATION_HHI', 0) or 0
+                                is_concentrated = ml.get('IS_CONCENTRATED_PRESCRIBER', False)
+
+                                st.metric("Drug HHI",
+                                         f"{hhi:,.0f}",
+                                         delta="Concentrated" if is_concentrated else "Diverse",
+                                         delta_color="inverse" if is_concentrated else "normal")
+                                st.caption("HHI > 2500 = concentrated prescriber")
+
+                                st.write(f"**Unique drugs:** {ml.get('UNIQUE_DRUGS_PRESCRIBED', 0)}")
+                                st.write(f"**Top drug %:** {ml.get('TOP_DRUG_PCT', 0):.1f}%")
+                                st.write(f"**Top 3 drugs %:** {ml.get('TOP_3_DRUGS_PCT', 0):.1f}%")
+
+                            with col2:
+                                st.markdown("**Pharma Payments**")
+                                is_single = ml.get('IS_SINGLE_PAYER_RECIPIENT', False)
+
+                                st.metric("Pharma Companies",
+                                         ml.get('UNIQUE_PHARMA_COMPANIES', 0),
+                                         delta="Single payer" if is_single else None,
+                                         delta_color="inverse" if is_single else "off")
+
+                                st.write(f"**Top payer %:** {ml.get('TOP_PAYER_PCT', 0):.1f}%")
+                                st.write(f"**General payments:** {ml.get('PCT_GENERAL_PAYMENTS', 0):.1f}%")
+                                st.write(f"**Research payments:** {ml.get('PCT_RESEARCH_PAYMENTS', 0):.1f}%")
+
+                        with ml_tab3:
+                            st.markdown("#### Percentile Rankings")
+                            st.caption("Position relative to peers (0-100, higher = more)")
+
+                            # Horizontal bar chart for percentiles
+                            percentiles = {
+                                'Payment': ml.get('PAYMENT_PERCENTILE', 0) or 0,
+                                'Rx Cost': ml.get('RX_COST_PERCENTILE', 0) or 0,
+                                'Brand %': ml.get('BRAND_PCT_PERCENTILE', 0) or 0,
+                                'Claims': ml.get('CLAIMS_PERCENTILE', 0) or 0
+                            }
+
+                            fig_bar = go.Figure()
+
+                            colors = ['#dc3545' if v >= 90 else '#ffc107' if v >= 75 else '#20c997'
+                                     for v in percentiles.values()]
+
+                            fig_bar.add_trace(go.Bar(
+                                x=list(percentiles.values()),
+                                y=list(percentiles.keys()),
+                                orientation='h',
+                                marker_color=colors,
+                                text=[f"{v:.0f}%" for v in percentiles.values()],
+                                textposition='inside'
+                            ))
+
+                            fig_bar.add_vline(x=90, line_dash="dash", line_color="red",
+                                            annotation_text="90th percentile")
+
+                            fig_bar.update_layout(
+                                xaxis=dict(range=[0, 100], title="Percentile"),
+                                yaxis=dict(title=""),
+                                height=250,
+                                showlegend=False
+                            )
+                            st.plotly_chart(fig_bar, use_container_width=True)
+
+                            # Ratios
+                            st.markdown("#### Financial Ratios")
+                            col1, col2, col3 = st.columns(3)
+
+                            with col1:
+                                ratio = ml.get('PAYMENT_TO_RX_RATIO')
+                                st.metric("Payment/Rx Ratio",
+                                         f"{ratio:.4f}" if ratio else "N/A")
+                            with col2:
+                                avg_cost = ml.get('AVG_COST_PER_CLAIM')
+                                st.metric("Avg Cost/Claim",
+                                         f"${avg_cost:,.2f}" if avg_cost else "N/A")
+                            with col3:
+                                peer_ratio = ml.get('PAYMENT_VS_PEER_RATIO')
+                                st.metric("vs Peer Avg",
+                                         f"{peer_ratio:.2f}x" if peer_ratio else "N/A")
+
+                    else:
+                        st.info("No ML features available for this provider")
 
         else:
             st.info("No providers found matching your search.")

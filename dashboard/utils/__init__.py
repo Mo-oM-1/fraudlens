@@ -9,5 +9,6 @@ from .snowflake_connector import (
     search_providers,
     get_payments_by_state,
     get_top_recipients,
-    get_excluded_with_activity
+    get_excluded_with_activity,
+    get_provider_ml_features
 )
