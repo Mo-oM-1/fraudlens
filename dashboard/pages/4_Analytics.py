@@ -16,12 +16,17 @@ from utils import (
     get_risk_distribution,
     run_query
 )
+from utils.theme import render_theme_toggle, apply_theme_css
 
 st.set_page_config(
     page_title="Analytics",
     page_icon="📊",
     layout="wide"
 )
+
+# Apply theme
+render_theme_toggle()
+apply_theme_css()
 
 st.title("📊 Analytics & Insights")
 st.markdown("### Data visualizations and trends")

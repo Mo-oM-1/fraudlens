@@ -10,12 +10,17 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 from utils import get_kpis, get_risk_distribution, get_alerts_summary
+from utils.theme import render_theme_toggle, apply_theme_css, get_plotly_theme
 
 st.set_page_config(
     page_title="Overview - Fraud Detection",
     page_icon="🏥",
     layout="wide"
 )
+
+# Apply theme
+render_theme_toggle()
+apply_theme_css()
 
 st.title("🏥 Healthcare Fraud Detection Dashboard")
 st.markdown("### Executive Overview")

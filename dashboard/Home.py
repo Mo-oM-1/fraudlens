@@ -3,6 +3,12 @@ FraudLens - Healthcare Fraud Detection Dashboard
 Main entry point
 """
 import streamlit as st
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent))
+from utils.theme import render_theme_toggle, apply_theme_css
 
 st.set_page_config(
     page_title="FraudLens - Healthcare Fraud Detection",
@@ -11,41 +17,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(90deg, #74b9ff, #a29bfe);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .subtitle {
-        text-align: center;
-        color: #888;
-        font-size: 1.2rem;
-        margin-bottom: 2rem;
-    }
-    .feature-card {
-        background: #1a1a2e;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin: 0.5rem 0;
-        border: 1px solid #333;
-    }
-    .stat-highlight {
-        font-size: 2rem;
-        font-weight: bold;
-        color: #74b9ff;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply theme
+render_theme_toggle()
+apply_theme_css()
 
 # Header
-st.markdown('<h1 class="main-header">🔍 FraudLens</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">FraudLens</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Healthcare Fraud Detection & Compliance Analytics</p>', unsafe_allow_html=True)
 
 st.divider()
@@ -110,6 +87,18 @@ with col2:
     - Risk score gauge
     """)
 
+    st.markdown("### 👥 Provider Comparison")
+    st.markdown("""
+    Side-by-side provider comparison:
+    - Compare two providers directly
+    - Visual metric comparison
+    - Peer benchmarking
+    - Key findings summary
+    """)
+
+col1, col2 = st.columns(2)
+
+with col1:
     st.markdown("### 📈 Analytics")
     st.markdown("""
     Deep-dive analytics and trends:
@@ -159,7 +148,7 @@ st.divider()
 st.markdown("### 🚀 Get Started")
 st.markdown("Use the **sidebar navigation** to explore the dashboard pages:")
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.page_link("pages/1_Overview.py", label="Overview", icon="📊")
@@ -173,10 +162,13 @@ with col3:
 with col4:
     st.page_link("pages/4_Analytics.py", label="Analytics", icon="📈")
 
+with col5:
+    st.page_link("pages/5_Provider_Comparison.py", label="Compare", icon="👥")
+
 # Footer
 st.divider()
 st.markdown("""
-<div style="text-align: center; color: #666; font-size: 0.9rem;">
+<div class="footer-text">
     <p>Built with Python, dbt, Snowflake & Streamlit</p>
     <p><strong>FraudLens</strong> - Data Engineering Portfolio Project | 2026</p>
 </div>

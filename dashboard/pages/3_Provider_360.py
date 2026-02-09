@@ -9,12 +9,17 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 from utils import search_providers, get_provider_details, get_provider_alerts
+from utils.theme import render_theme_toggle, apply_theme_css
 
 st.set_page_config(
     page_title="Provider 360",
     page_icon="👤",
     layout="wide"
 )
+
+# Apply theme
+render_theme_toggle()
+apply_theme_css()
 
 st.title("👤 Provider 360° View")
 st.markdown("### Complete provider profile and investigation")

@@ -11,12 +11,17 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 from utils import get_alerts_list, get_alerts_summary, run_query
+from utils.theme import render_theme_toggle, apply_theme_css
 
 st.set_page_config(
     page_title="Fraud Alerts",
     page_icon="🚨",
     layout="wide"
 )
+
+# Apply theme
+render_theme_toggle()
+apply_theme_css()
 
 st.title("🚨 Fraud Alerts")
 st.markdown("### Actionable alerts requiring investigation")
