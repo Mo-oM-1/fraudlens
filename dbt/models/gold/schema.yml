@@ -168,3 +168,49 @@ models:
           - dbt_utils.accepted_range:
               min_value: 0
               max_value: 100
+
+  - name: provider_ml_features
+    description: "Advanced ML features for fraud detection - peer comparisons, z-scores, concentration metrics"
+    columns:
+      - name: NPI
+        description: "National Provider Identifier - Primary key"
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('provider_360')
+              field: NPI
+      - name: PAYMENT_ZSCORE
+        description: "Z-score of payments vs specialty/state peers (>2 = outlier)"
+      - name: RX_COST_ZSCORE
+        description: "Z-score of prescription cost vs peers"
+      - name: BRAND_PCT_ZSCORE
+        description: "Z-score of brand % vs peers"
+      - name: DRUG_CONCENTRATION_HHI
+        description: "Herfindahl-Hirschman Index (0-10000, >2500 = concentrated)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 10000
+      - name: UNIQUE_PHARMA_COMPANIES
+        description: "Number of distinct pharma companies paying provider"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: PAYMENT_PERCENTILE
+        description: "Percentile rank of payments within specialty/state (0-100)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: IS_MULTI_DIMENSION_OUTLIER
+        description: "True if provider is outlier (z>2) in 2+ dimensions"
+        tests:
+          - not_null
+      - name: ANOMALY_FLAG_COUNT
+        description: "Count of anomaly flags triggered (0-6)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 6
