@@ -1,0 +1,8 @@
+# Language detection for GitHub
+*.sql linguist-language=SQL
+*.py linguist-language=Python
+
+# dbt Jinja templates as SQL
+dbt/models/**/*.sql linguist-language=SQL
+dbt/tests/**/*.sql linguist-language=SQL
+dbt/macros/**/*.sql linguist-language=SQL
