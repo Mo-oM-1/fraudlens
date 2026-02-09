@@ -78,31 +78,36 @@ peer_stats as (
 ),
 
 -- Calculate drug concentration (HHI) per provider
+-- Step 1: Get claims per drug per provider with totals
+drug_claims_with_totals as (
+    select
+        NPI,
+        GENERIC_NAME,
+        SUM(TOTAL_CLAIMS) as DRUG_CLAIMS,
+        SUM(SUM(TOTAL_CLAIMS)) OVER (PARTITION BY NPI) as PROVIDER_TOTAL_CLAIMS,
+        ROW_NUMBER() OVER (PARTITION BY NPI ORDER BY SUM(TOTAL_CLAIMS) DESC) as RN
+    from prescriptions
+    group by NPI, GENERIC_NAME
+),
+
+-- Step 2: Calculate market share and HHI
 drug_concentration as (
     select
         NPI,
         COUNT(DISTINCT GENERIC_NAME) as UNIQUE_DRUGS,
-        SUM(TOTAL_CLAIMS) as TOTAL_CLAIMS,
+        MAX(PROVIDER_TOTAL_CLAIMS) as TOTAL_CLAIMS,
 
         -- Herfindahl-Hirschman Index (sum of squared market shares)
         -- HHI ranges from 0 (diverse) to 10000 (one drug only)
-        SUM(POWER(TOTAL_CLAIMS * 100.0 / NULLIF(SUM(TOTAL_CLAIMS) OVER (PARTITION BY NPI), 0), 2)) as DRUG_HHI,
+        SUM(POWER(DRUG_CLAIMS * 100.0 / NULLIF(PROVIDER_TOTAL_CLAIMS, 0), 2)) as DRUG_HHI,
 
         -- Top drug concentration
-        MAX(TOTAL_CLAIMS) * 100.0 / NULLIF(SUM(TOTAL_CLAIMS), 0) as TOP_DRUG_PCT,
+        MAX(case when RN = 1 then DRUG_CLAIMS else 0 end) * 100.0 / NULLIF(MAX(PROVIDER_TOTAL_CLAIMS), 0) as TOP_DRUG_PCT,
 
         -- Top 3 drugs concentration
-        SUM(case when RN <= 3 then TOTAL_CLAIMS else 0 end) * 100.0 / NULLIF(SUM(TOTAL_CLAIMS), 0) as TOP_3_DRUGS_PCT
+        SUM(case when RN <= 3 then DRUG_CLAIMS else 0 end) * 100.0 / NULLIF(MAX(PROVIDER_TOTAL_CLAIMS), 0) as TOP_3_DRUGS_PCT
 
-    from (
-        select
-            NPI,
-            GENERIC_NAME,
-            SUM(TOTAL_CLAIMS) as TOTAL_CLAIMS,
-            ROW_NUMBER() OVER (PARTITION BY NPI ORDER BY SUM(TOTAL_CLAIMS) DESC) as RN
-        from prescriptions
-        group by NPI, GENERIC_NAME
-    )
+    from drug_claims_with_totals
     group by NPI
 ),
 
